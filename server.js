@@ -1,0 +1,640 @@
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { Pool } = require('pg');
+const { createClient } = require('@supabase/supabase-js');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = 'banana-prompt-secret-key-12345';
+
+// Database config
+const clientConfig = {
+  host: 'aws-0-eu-central-1.pooler.supabase.com',
+  port: 6543,
+  user: 'postgres.ydynbdfdyvzfzlifhclj',
+  password: 'deep@9067905',
+  database: 'postgres',
+  ssl: { rejectUnauthorized: false }
+};
+const pool = new Pool(clientConfig);
+
+// Supabase client initialization
+const supabaseUrl = 'https://ydynbdfdyvzfzlifhclj.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeW5iZGZkeXZ6ZnpsaWZoY2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5ODU4OTMsImV4cCI6MjA5OTU2MTg5M30.VzTeqMedLj72je-Zti_x5sF6gimDClEdsTyYXKXqpAw';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Middlewares
+app.use(express.json());
+
+// Enable CORS for cross-origin frontend support
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  next();
+});
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+
+// Serve static uploads and files
+app.use('/uploads', express.static(uploadsDir));
+app.use(express.static(publicDir));
+
+// Multer Memory Storage Configuration
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+// Admin Token Authentication Middleware
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) return res.status(401).json({ error: 'Access token required' });
+  
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Token is invalid or expired' });
+    req.user = user;
+    next();
+  });
+}
+
+// Database startup setup helper
+async function initDbSchema() {
+  const client = await pool.connect();
+  try {
+    // 1. Ensure storage policies exist
+    await client.query(`
+      do $$
+      begin
+        if not exists (select 1 from pg_policies where policyname = 'Public Upload Policy') then
+          create policy "Public Upload Policy" on storage.objects for insert with check (bucket_id = 'uploads');
+        end if;
+        if not exists (select 1 from pg_policies where policyname = 'Public Read Policy') then
+          create policy "Public Read Policy" on storage.objects for select using (bucket_id = 'uploads');
+        end if;
+        if not exists (select 1 from pg_policies where policyname = 'Public Delete Policy') then
+          create policy "Public Delete Policy" on storage.objects for delete using (bucket_id = 'uploads');
+        end if;
+      end
+      $$;
+    `);
+    console.log("Supabase storage policies initialized successfully!");
+
+    // 2. Seed default admin settings if empty
+    const settingsRes = await client.query("SELECT * FROM settings WHERE key = 'adminPasswordHash'");
+    if (settingsRes.rows.length === 0) {
+      console.log('Seeding default admin password hash in database...');
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash('admin123', salt);
+      await client.query("INSERT INTO settings (key, value) VALUES ('adminPasswordHash', $1)", [hash]);
+      await client.query("INSERT INTO settings (key, value) VALUES ('siteTitle', 'MeiGen AI')");
+      await client.query("INSERT INTO settings (key, value) VALUES ('siteDescription', 'Creative prompt hub')");
+    }
+  } catch (err) {
+    console.error("Schema initialization warning:", err.message);
+  } finally {
+    client.release();
+  }
+}
+initDbSchema();
+
+// Helper to format settings object from database rows
+async function getSettings() {
+  const res = await pool.query('SELECT * FROM settings');
+  const settings = {};
+  res.rows.forEach(row => {
+    try {
+      settings[row.key] = JSON.parse(row.value);
+    } catch (e) {
+      if (row.value === 'true') settings[row.key] = true;
+      else if (row.value === 'false') settings[row.key] = false;
+      else if (!isNaN(row.value) && row.value.trim() !== '') settings[row.key] = Number(row.value);
+      else settings[row.key] = row.value;
+    }
+  });
+  return settings;
+}
+
+// ------------------- API ROUTES -------------------
+
+// Auth APIs
+app.post('/api/auth/login', async (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+
+  try {
+    const settings = await getSettings();
+    const hash = settings.adminPasswordHash || '';
+
+    const match = await bcrypt.compare(password, hash);
+    if (!match) {
+      return res.status(401).json({ error: 'Invalid admin password' });
+    }
+
+    const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, siteTitle: settings.siteTitle || 'MeiGen AI' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+app.get('/api/auth/verify', authenticateToken, (req, res) => {
+  res.json({ valid: true });
+});
+
+// Settings APIs
+app.get('/api/settings', async (req, res) => {
+  try {
+    const settings = await getSettings();
+    const { adminPasswordHash, ...publicSettings } = settings;
+    res.json(publicSettings);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+app.put('/api/settings', authenticateToken, async (req, res) => {
+  const { 
+    siteTitle, 
+    siteDescription, 
+    footerText, 
+    newPassword,
+    promoVisible,
+    promoTitle,
+    promoImageUrl,
+    promoText,
+    promoButtonText,
+    promoButtonLink
+  } = req.body;
+
+  try {
+    const updates = {
+      siteTitle,
+      siteDescription,
+      footerText,
+      promoVisible,
+      promoTitle,
+      promoImageUrl,
+      promoText,
+      promoButtonText,
+      promoButtonLink
+    };
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) {
+        await pool.query(`
+          INSERT INTO settings (key, value)
+          VALUES ($1, $2)
+          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+        `, [key, typeof value === 'object' ? JSON.stringify(value) : String(value)]);
+      }
+    }
+
+    if (newPassword && newPassword.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(newPassword, salt);
+      await pool.query(`
+        INSERT INTO settings (key, value)
+        VALUES ('adminPasswordHash', $1)
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+      `, [hash]);
+    }
+
+    const settings = await getSettings();
+    const { adminPasswordHash, ...publicSettings } = settings;
+    res.json({ message: 'Settings updated successfully', settings: publicSettings });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save settings' });
+  }
+});
+
+// Categories APIs
+app.get('/api/categories', async (req, res) => {
+  try {
+    const resDb = await pool.query('SELECT * FROM categories');
+    res.json(resDb.rows || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
+app.post('/api/categories', authenticateToken, async (req, res) => {
+  const { name } = req.body;
+  if (!name || name.trim() === '') {
+    return res.status(400).json({ error: 'Category name is required' });
+  }
+
+  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  
+  try {
+    const checkExist = await pool.query('SELECT 1 FROM categories WHERE id = $1', [id]);
+    if (checkExist.rows.length > 0) {
+      return res.status(400).json({ error: 'Category already exists' });
+    }
+
+    await pool.query('INSERT INTO categories (id, name) VALUES ($1, $2)', [id, name]);
+    res.status(201).json({ id, name });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add category' });
+  }
+});
+
+app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const resDb = await pool.query('DELETE FROM categories WHERE id = $1', [id]);
+    if (resDb.rowCount === 0) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    await pool.query("UPDATE prompts SET category = 'other' WHERE category = $1", [id]);
+    res.json({ message: 'Category deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete category' });
+  }
+});
+
+// Prompts APIs (Public approved listings)
+app.get('/api/prompts', async (req, res) => {
+  const { search, category, model } = req.query;
+
+  try {
+    let query = "SELECT * FROM prompts WHERE status = 'approved'";
+    const params = [];
+
+    if (category && category !== 'all') {
+      query += " AND category = $" + (params.length + 1);
+      params.push(category);
+    }
+
+    if (model && model !== 'all') {
+      query += " AND LOWER(model) = LOWER($" + (params.length + 1) + ")";
+      params.push(model);
+    }
+
+    if (search && search.trim() !== '') {
+      const keyword = `%${search.toLowerCase()}%`;
+      query += " AND (LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + " OR LOWER(\"negativePrompt\") LIKE $" + (params.length + 1) + ")";
+      params.push(keyword);
+    }
+
+    query += " ORDER BY \"createdAt\" DESC";
+
+    const resDb = await pool.query(query, params);
+    res.json(resDb.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch prompts' });
+  }
+});
+
+app.get('/api/prompts/:id', async (req, res) => {
+  try {
+    const resDb = await pool.query('SELECT * FROM prompts WHERE id = $1', [req.params.id]);
+    if (resDb.rows.length === 0) return res.status(404).json({ error: 'Prompt not found' });
+    res.json(resDb.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch prompt' });
+  }
+});
+
+// Admin Add Prompt (Approved directly)
+app.post('/api/prompts', authenticateToken, async (req, res) => {
+  const { title, promptText, negativePrompt, category, model, aspectRatio, cfgScale, steps, sampler, seed, imageUrl, creatorName, creatorLink } = req.body;
+  
+  if (!title || !promptText || !category || !model) {
+    return res.status(400).json({ error: 'Title, prompt text, category, and model are required' });
+  }
+
+  const id = 'prompt-' + Date.now();
+  const newPrompt = {
+    id,
+    title,
+    promptText,
+    negativePrompt: negativePrompt || '',
+    category,
+    model,
+    aspectRatio: aspectRatio || '1:1',
+    cfgScale: cfgScale || '7.0',
+    steps: steps || '30',
+    sampler: sampler || 'Euler a',
+    seed: seed || 'Random',
+    imageUrl: imageUrl || '/uploads/placeholder.png',
+    creatorName: creatorName || '',
+    creatorLink: creatorLink || '',
+    status: 'approved',
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    await pool.query(`
+      INSERT INTO prompts (
+        id, title, "promptText", "negativePrompt", category, model, 
+        "aspectRatio", "cfgScale", steps, sampler, seed, "imageUrl", 
+        "creatorName", "creatorLink", status, "createdAt"
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    `, [
+      id, title, promptText, negativePrompt || '', category, model,
+      newPrompt.aspectRatio, newPrompt.cfgScale, newPrompt.steps, newPrompt.sampler,
+      newPrompt.seed, newPrompt.imageUrl, newPrompt.creatorName, newPrompt.creatorLink,
+      'approved', newPrompt.createdAt
+    ]);
+    res.status(201).json(newPrompt);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save prompt' });
+  }
+});
+
+// Edit Prompt
+app.put('/api/prompts/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { title, promptText, negativePrompt, category, model, aspectRatio, cfgScale, steps, sampler, seed, imageUrl, status, creatorName, creatorLink } = req.body;
+  
+  try {
+    const resDb = await pool.query('SELECT * FROM prompts WHERE id = $1', [id]);
+    if (resDb.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    const existing = resDb.rows[0];
+
+    const updatedPrompt = {
+      id,
+      title: title || existing.title,
+      promptText: promptText || existing.promptText,
+      negativePrompt: negativePrompt !== undefined ? negativePrompt : existing.negativePrompt,
+      category: category || existing.category,
+      model: model || existing.model,
+      aspectRatio: aspectRatio || existing.aspectRatio,
+      cfgScale: cfgScale || existing.cfgScale,
+      steps: steps || existing.steps,
+      sampler: sampler || existing.sampler,
+      seed: seed || existing.seed,
+      imageUrl: imageUrl || existing.imageUrl,
+      creatorName: creatorName !== undefined ? creatorName : existing.creatorName,
+      creatorLink: creatorLink !== undefined ? creatorLink : existing.creatorLink,
+      status: status || existing.status,
+      createdAt: existing.createdAt
+    };
+
+    await pool.query(`
+      UPDATE prompts SET 
+        title = $1, "promptText" = $2, "negativePrompt" = $3, category = $4, model = $5,
+        "aspectRatio" = $6, "cfgScale" = $7, steps = $8, sampler = $9, seed = $10,
+        "imageUrl" = $11, "creatorName" = $12, "creatorLink" = $13, status = $14
+      WHERE id = $15
+    `, [
+      updatedPrompt.title, updatedPrompt.promptText, updatedPrompt.negativePrompt,
+      updatedPrompt.category, updatedPrompt.model, updatedPrompt.aspectRatio,
+      updatedPrompt.cfgScale, updatedPrompt.steps, updatedPrompt.sampler,
+      updatedPrompt.seed, updatedPrompt.imageUrl, updatedPrompt.creatorName,
+      updatedPrompt.creatorLink, updatedPrompt.status, id
+    ]);
+
+    res.json(updatedPrompt);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update prompt' });
+  }
+});
+
+// Delete Prompt
+app.delete('/api/prompts/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const resDb = await pool.query('SELECT * FROM prompts WHERE id = $1', [id]);
+    if (resDb.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    const prompt = resDb.rows[0];
+
+    // Remove from Supabase Storage if applicable
+    if (prompt.imageUrl && prompt.imageUrl.includes('/storage/v1/object/public/uploads/')) {
+      const filename = prompt.imageUrl.split('/uploads/')[1];
+      if (filename) {
+        try {
+          await supabase.storage.from('uploads').remove([filename]);
+        } catch (err) {
+          console.error('Failed to delete image from Supabase storage:', err);
+        }
+      }
+    }
+
+    await pool.query('DELETE FROM prompts WHERE id = $1', [id]);
+    res.json({ message: 'Prompt deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete prompt' });
+  }
+});
+
+// ------------------- PUBLIC SUBMISSION PORTAL API -------------------
+
+app.post('/api/prompts/submit', upload.single('image'), async (req, res) => {
+  const { title, promptText, negativePrompt, category, model, aspectRatio, cfgScale, steps, sampler, seed, imageUrl, creatorName, creatorLink } = req.body;
+
+  if (!title || !promptText || !category || !model) {
+    return res.status(400).json({ error: 'Title, prompt text, category, and model are required' });
+  }
+
+  let finalImageUrl = '/uploads/placeholder.png';
+  if (req.file) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(req.file.originalname) || '.png';
+    const filename = 'art-' + uniqueSuffix + ext;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('uploads')
+        .upload(filename, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: true
+        });
+
+      if (error) throw error;
+      finalImageUrl = `${supabaseUrl}/storage/v1/object/public/uploads/${filename}`;
+    } catch (err) {
+      console.error('Supabase submission upload error:', err);
+      return res.status(500).json({ error: 'Failed to upload image' });
+    }
+  } else if (imageUrl && imageUrl.trim() !== '') {
+    finalImageUrl = imageUrl.trim();
+  }
+
+  const id = 'submission-' + Date.now();
+  const newSubmission = {
+    id,
+    title,
+    promptText,
+    negativePrompt: negativePrompt || '',
+    category,
+    model,
+    aspectRatio: aspectRatio || '1:1',
+    cfgScale: cfgScale || '7.0',
+    steps: steps || '30',
+    sampler: sampler || 'Euler a',
+    seed: seed || 'Random',
+    imageUrl: finalImageUrl,
+    creatorName: creatorName || '',
+    creatorLink: creatorLink || '',
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    await pool.query(`
+      INSERT INTO prompts (
+        id, title, "promptText", "negativePrompt", category, model, 
+        "aspectRatio", "cfgScale", steps, sampler, seed, "imageUrl", 
+        "creatorName", "creatorLink", status, "createdAt"
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    `, [
+      id, title, promptText, negativePrompt || '', category, model,
+      newSubmission.aspectRatio, newSubmission.cfgScale, newSubmission.steps, newSubmission.sampler,
+      newSubmission.seed, newSubmission.imageUrl, newSubmission.creatorName, newSubmission.creatorLink,
+      'pending', newSubmission.createdAt
+    ]);
+
+    res.status(201).json({ message: 'Prompt submitted successfully for review!', prompt: newSubmission });
+  } catch (err) {
+    console.error('DB submission error:', err);
+    res.status(500).json({ error: 'Failed to save submission' });
+  }
+});
+
+// Image Upload API (Admin only)
+app.post('/api/upload', authenticateToken, upload.single('image'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image file uploaded' });
+  }
+
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  const ext = path.extname(req.file.originalname) || '.png';
+  const filename = 'art-' + uniqueSuffix + ext;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from('uploads')
+      .upload(filename, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const fileUrl = `${supabaseUrl}/storage/v1/object/public/uploads/${filename}`;
+    res.json({ imageUrl: fileUrl });
+  } catch (err) {
+    console.error('Supabase upload error:', err);
+    res.status(500).json({ error: 'Failed to upload image to storage' });
+  }
+});
+
+// ------------------- ADMIN MODERATION QUEUE APIs -------------------
+
+// Get all prompts (including pending/approved for tables)
+app.get('/api/admin/prompts', authenticateToken, async (req, res) => {
+  try {
+    const resDb = await pool.query('SELECT * FROM prompts ORDER BY "createdAt" DESC');
+    res.json(resDb.rows || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch admin prompts' });
+  }
+});
+
+// Get pending submissions
+app.get('/api/admin/pending', authenticateToken, async (req, res) => {
+  try {
+    const resDb = await pool.query("SELECT * FROM prompts WHERE status = 'pending' ORDER BY \"createdAt\" DESC");
+    res.json(resDb.rows || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch pending submissions' });
+  }
+});
+
+// Approve Submission
+app.post('/api/admin/pending/:id/approve', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const resDb = await pool.query('SELECT * FROM prompts WHERE id = $1', [id]);
+    if (resDb.rows.length === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+
+    await pool.query("UPDATE prompts SET status = 'approved' WHERE id = $1", [id]);
+    const approvedPrompt = { ...resDb.rows[0], status: 'approved' };
+    res.json({ message: 'Submission approved and is now live!', prompt: approvedPrompt });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to approve submission' });
+  }
+});
+
+// Reject/Delete Submission
+app.delete('/api/admin/pending/:id/reject', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const resDb = await pool.query('SELECT * FROM prompts WHERE id = $1', [id]);
+    if (resDb.rows.length === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    const prompt = resDb.rows[0];
+
+    // Delete image from Supabase Storage if applicable
+    if (prompt.imageUrl && prompt.imageUrl.includes('/storage/v1/object/public/uploads/')) {
+      const filename = prompt.imageUrl.split('/uploads/')[1];
+      if (filename) {
+        try {
+          await supabase.storage.from('uploads').remove([filename]);
+        } catch (err) {
+          console.error('Failed to delete image from Supabase storage:', err);
+        }
+      }
+    }
+
+    await pool.query('DELETE FROM prompts WHERE id = $1', [id]);
+    res.json({ message: 'Submission rejected and deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reject submission' });
+  }
+});
+
+// Serve Admin Dashboard Page Route
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(publicDir, 'admin.html'));
+});
+
+// Catch-all static fallback middleware
+app.use((req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+
+// Start Server
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`🚀 Prompt AI Server running at: http://localhost:${PORT}`);
+    console.log(`🔒 Admin Panel available at: http://localhost:${PORT}/admin`);
+    console.log(`🔑 Default Admin Password: admin123`);
+    console.log(`====================================================`);
+  });
+}
+
+module.exports = app;

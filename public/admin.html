@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — Prompt AI</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- Admin Login Overlay -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-card">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔒</div>
+      <h2>Admin Control Center</h2>
+      <p>Enter password to manage submissions and configurations.</p>
+      <form id="login-form">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <input type="password" id="admin-password" class="form-control" placeholder="Security Password" required style="text-align: center;">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Unlock Console</button>
+      </form>
+      <div style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted);">
+        <a href="/" style="text-decoration: underline;">Back to Website</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <a href="/" class="logo">
+        <span class="highlight">Prompt</span><span>AI</span>
+        <span style="font-size: 0.6rem; border: 1px solid var(--border-color); padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; margin-left: 5px; color: var(--text-muted);">CONSOLE</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/" class="btn btn-secondary" target="_blank">
+          <i data-lucide="external-link" style="width: 15px; height: 15px; vertical-align: middle;"></i> View Site
+        </a>
+        <button class="btn btn-primary" id="btn-logout-header">
+          <i data-lucide="log-out" style="width: 15px; height: 15px; vertical-align: middle;"></i> Logout
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Admin Container -->
+  <main class="admin-container">
+    
+    <div class="admin-header">
+      <div class="admin-title-desc">
+        <h1 id="admin-welcome">Admin Console</h1>
+        <p>Manage submissions approval queue, prompt libraries, categories, and settings.</p>
+      </div>
+    </div>
+
+    <!-- Layout Grid -->
+    <div class="admin-grid">
+      
+      <!-- Sidebar -->
+      <aside class="admin-sidebar">
+        <div class="sidebar-tab active" data-tab="dashboard">
+          <i data-lucide="layout-dashboard" style="width: 16px;"></i> Dashboard Stats
+        </div>
+        <div class="sidebar-tab" data-tab="pending" id="tab-pending-submissions">
+          <i data-lucide="clock" style="width: 16px;"></i> Pending Queue
+          <span id="badge-pending-count" style="display:none; background:#ff4444; color:white; font-size:0.65rem; font-weight:700; padding:0.1rem 0.35rem; border-radius:10px; margin-left:auto;">0</span>
+        </div>
+        <div class="sidebar-tab" data-tab="prompts">
+          <i data-lucide="image" style="width: 16px;"></i> Active Prompts
+        </div>
+        <div class="sidebar-tab" data-tab="categories">
+          <i data-lucide="folder-open" style="width: 16px;"></i> Manage Categories
+        </div>
+        <div class="sidebar-tab" data-tab="settings">
+          <i data-lucide="settings" style="width: 16px;"></i> Site Settings
+        </div>
+        <div class="sidebar-tab" id="btn-logout-sidebar" style="color: #f87171; border-top: 1px solid var(--border-color); margin-top: 1rem; padding-top: 1rem;">
+          <i data-lucide="log-out" style="width: 16px;"></i> Logout
+        </div>
+      </aside>
+
+      <!-- Content Panel -->
+      <section class="admin-content">
+        
+        <!-- SECTION 1: DASHBOARD STATS -->
+        <div class="admin-panel-section active" id="panel-dashboard">
+          <h2 class="section-title" style="margin-bottom: 1.25rem;">Overview Dashboard</h2>
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-icon"><i data-lucide="image"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Active Prompts</span>
+                <span class="stat-value" id="stat-total-prompts">0</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="color:#ff8800;"><i data-lucide="clock"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Pending Review</span>
+                <span class="stat-value" id="stat-pending-prompts">0</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i data-lucide="folder-open"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Categories</span>
+                <span class="stat-value" id="stat-total-categories">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-top: 1.5rem;">
+            <h3 style="margin-bottom: 0.75rem; font-weight: 700;">Console Quick Actions</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+              <button class="btn btn-primary" id="dash-action-add-prompt">
+                <i data-lucide="plus-circle" style="width: 16px;"></i> Create Prompt
+              </button>
+              <button class="btn btn-secondary" id="dash-action-view-pending">
+                <i data-lucide="clock" style="width: 16px;"></i> Review Submissions
+              </button>
+              <button class="btn btn-secondary" id="dash-action-add-cat">
+                <i data-lucide="folder-plus" style="width: 16px;"></i> Add Category
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: PENDING QUEUE -->
+        <div class="admin-panel-section" id="panel-pending">
+          <div class="action-header">
+            <h2 class="section-title">Pending User Submissions</h2>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Title</th>
+                  <th>Model</th>
+                  <th>Category</th>
+                  <th>Date Submitted</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-pending-table-body">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECTION 3: MANAGE PROMPTS -->
+        <div class="admin-panel-section" id="panel-prompts">
+          <div class="action-header">
+            <h2 class="section-title">Active Prompts List</h2>
+            <button class="btn btn-primary" id="btn-open-add-prompt-modal">
+              <i data-lucide="plus" style="width: 16px;"></i> Add Prompt
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Title</th>
+                  <th>Model</th>
+                  <th>Category</th>
+                  <th>Created Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-prompts-table-body">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECTION 4: MANAGE CATEGORIES -->
+        <div class="admin-panel-section" id="panel-categories">
+          <h2 class="section-title" style="margin-bottom: 1.5rem;">Prompt Categories</h2>
+          
+          <div class="category-manager-grid">
+            <!-- Add -->
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; height: fit-content;">
+              <h3 style="margin-bottom: 1rem; font-size: 1rem; font-weight: 700;">Add New Category</h3>
+              <form id="add-category-form">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                  <label for="new-category-name">Category Name</label>
+                  <input type="text" id="new-category-name" class="form-control" placeholder="e.g. 3D Renders, Vector" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Category</button>
+              </form>
+            </div>
+            
+            <!-- List -->
+            <div>
+              <h3 style="margin-bottom: 1rem; font-size: 1rem; font-weight: 700;">Current Categories</h3>
+              <div class="category-list" id="admin-category-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 5: SITE SETTINGS -->
+        <div class="admin-panel-section" id="panel-settings">
+          <h2 class="section-title" style="margin-bottom: 1.5rem;">Website Settings</h2>
+          
+          <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            
+            <!-- General Settings -->
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;">
+              <h3 style="margin-bottom: 1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Global Configuration</h3>
+              <form id="general-settings-form">
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label for="set-site-title">Website Name / Brand Title</label>
+                    <input type="text" id="set-site-title" class="form-control" placeholder="MeiGen AI" required>
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="set-site-desc">Website Description</label>
+                    <textarea id="set-site-desc" class="form-control" placeholder="Sub-headline content..." required></textarea>
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="set-footer-text">Footer Text</label>
+                    <input type="text" id="set-footer-text" class="form-control" placeholder="© 2026 MeiGen AI. All Rights Reserved." required>
+                  </div>
+
+                  <!-- Promotion Card Settings -->
+                  <div class="form-group full-width" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <h4 style="font-weight: 700; margin-bottom: 0.5rem; font-size: 0.95rem;">Promotion Card Configuration</h4>
+                  </div>
+                  <div class="form-group full-width">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: bold; cursor: pointer; font-size: 0.85rem;">
+                      <input type="checkbox" id="set-promo-visible" style="width: 16px; height: 16px;">
+                      Show Floating Promotion Card
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-promo-title">Promo Title</label>
+                    <input type="text" id="set-promo-title" class="form-control" placeholder="e.g. Seedance mini/4K & Happyhorse 1.1">
+                  </div>
+                  <div class="form-group">
+                    <label for="set-promo-image-url">Promo Image URL</label>
+                    <input type="text" id="set-promo-image-url" class="form-control" placeholder="e.g. /uploads/violet_flowers.png">
+                  </div>
+                  <div class="form-group full-width">
+                    <label for="set-promo-text">Promo Description</label>
+                    <textarea id="set-promo-text" class="form-control" placeholder="e.g. Native 4K video + the new Happyhorse 1.1 — now live 🎬" style="min-height: 60px;"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-promo-btn-text">Button Text</label>
+                    <input type="text" id="set-promo-btn-text" class="form-control" placeholder="e.g. Try it">
+                  </div>
+                  <div class="form-group">
+                    <label for="set-promo-btn-link">Button Target Link</label>
+                    <input type="url" id="set-promo-btn-link" class="form-control" placeholder="e.g. https://www.meigen.ai">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1.25rem;">Save Settings</button>
+              </form>
+            </div>
+
+            <!-- Password -->
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;">
+              <h3 style="margin-bottom: 1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; color: #f87171;">Console Security Password</h3>
+              <form id="password-settings-form">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="set-new-password">New Password</label>
+                    <input type="password" id="set-new-password" class="form-control" placeholder="••••••••" required minlength="6">
+                  </div>
+                  <div class="form-group">
+                    <label for="set-confirm-password">Confirm Password</label>
+                    <input type="password" id="set-confirm-password" class="form-control" placeholder="••••••••" required minlength="6">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-danger" style="margin-top: 1rem;">Update Password</button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+  </main>
+
+  <!-- Add/Edit Prompt Modal Form (Persistent in DOM) -->
+  <div class="modal-overlay" id="prompt-form-modal">
+    <div class="modal-container" style="max-width: 800px;">
+      <button class="modal-close-btn" id="prompt-form-close" aria-label="Close form modal">
+        <i data-lucide="x"></i>
+      </button>
+      
+      <div style="padding: 2rem;">
+        <h2 class="modal-title" id="prompt-form-modal-title" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">Add New Prompt</h2>
+        
+        <form id="prompt-editor-form">
+          <input type="hidden" id="edit-prompt-id">
+          
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="field-title">Title / Name of the Art</label>
+              <input type="text" id="field-title" class="form-control" placeholder="e.g. Minimalist Ceramic Cup" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="field-creator-name">Creator Name / Handle</label>
+              <input type="text" id="field-creator-name" class="form-control" placeholder="e.g. @john_designer">
+            </div>
+
+            <div class="form-group">
+              <label for="field-creator-link">Creator Profile Link</label>
+              <input type="url" id="field-creator-link" class="form-control" placeholder="e.g. https://instagram.com/handle">
+            </div>
+            
+            <div class="form-group">
+              <label for="field-category">Category</label>
+              <select id="field-category" class="form-control" required></select>
+            </div>
+
+            <div class="form-group">
+              <label for="field-model">AI Model</label>
+              <select id="field-model" class="form-control" required>
+                <option value="Midjourney">Midjourney</option>
+                <option value="Flux">Flux</option>
+                <option value="Stable Diffusion">Stable Diffusion</option>
+                <option value="DALL-E 3">DALL-E 3</option>
+              </select>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="field-prompt-text">Text Prompt</label>
+              <textarea id="field-prompt-text" class="form-control" placeholder="Paste exact prompt text..." required style="min-height: 100px;"></textarea>
+            </div>
+
+            <!-- Hidden compatibility elements to prevent JS errors -->
+            <div style="display: none;">
+              <textarea id="field-neg-prompt"></textarea>
+            </div>
+
+            <!-- Upload -->
+            <div class="form-group full-width" style="border: 1px dashed var(--border-color); padding: 1.25rem; border-radius: 8px; margin: 0.5rem 0;">
+              <label>Art Generated Picture</label>
+              <div class="file-upload-container">
+                <div class="image-preview-box" id="editor-image-preview">
+                  <span class="image-preview-placeholder">🖼️</span>
+                </div>
+                <div class="file-upload-input-wrapper">
+                  <input type="file" id="field-image-file" accept="image/*" style="margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.7rem; color: var(--text-muted); text-align: center;">— OR PASTE IMAGE URL —</span>
+                  <input type="text" id="field-image-url" class="form-control" placeholder="https://example.com/image.jpg">
+                </div>
+              </div>
+            </div>
+
+            <!-- Advanced -->
+            <div class="form-group">
+              <label for="field-ratio">Aspect Ratio</label>
+              <select id="field-ratio" class="form-control">
+                <option value="1:1">1:1 (Square)</option>
+                <option value="16:9">16:9 (Landscape)</option>
+                <option value="9:16">9:16 (Portrait)</option>
+                <option value="4:3">4:3 (Standard)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="field-cfg">CFG Scale / Guidance</label>
+              <input type="text" id="field-cfg" class="form-control" placeholder="7.0">
+            </div>
+
+            <div class="form-group">
+              <label for="field-steps">Steps</label>
+              <input type="text" id="field-steps" class="form-control" placeholder="30">
+            </div>
+
+            <div class="form-group">
+              <label for="field-sampler">Sampler Method</label>
+              <input type="text" id="field-sampler" class="form-control" placeholder="Euler a">
+            </div>
+
+            <div class="form-group full-width">
+              <label for="field-seed">Seed Value</label>
+              <input type="text" id="field-seed" class="form-control" placeholder="Random">
+            </div>
+
+          </div>
+
+          <div class="btn-group" style="justify-content: flex-end; margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-prompt">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-submit-prompt">Save Prompt</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast-notification">
+    <i data-lucide="info" class="toast-icon"></i>
+    <span class="toast-message">Action processed successfully!</span>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

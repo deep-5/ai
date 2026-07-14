@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt AI — Curated AI Prompts Workspace</title>
+  <link rel="stylesheet" href="/css/style_v4.css?v=4.2">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- App Main Layout Container -->
+  <div class="app-layout">
+    
+    <!-- Pinterest Top Header Bar -->
+    <header class="pinterest-header">
+      <div class="pinterest-header-left">
+        <a href="/" class="pinterest-logo" id="nav-home">
+          <span class="pinterest-logo-icon">P</span>
+        </a>
+        <button class="pinterest-feed-btn">
+          Home feed
+          <i data-lucide="chevron-down" style="width: 14px; height: 14px; color: var(--text-primary);"></i>
+        </button>
+      </div>
+      
+      <!-- Central Search Box -->
+      <div class="pinterest-search-box">
+        <i data-lucide="search" class="pinterest-search-icon"></i>
+        <input type="text" id="search-input" class="pinterest-search-input" placeholder="Search for ideas, prompts, designs...">
+      </div>
+      
+      <!-- Right Action Icons -->
+      <div class="pinterest-header-right">
+        <button class="pinterest-icon-btn" id="btn-open-submit-modal" title="Submit New Prompt">
+          <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
+        </button>
+        <div class="pinterest-profile-avatar" title="My Profile">
+          <img src="https://ui-avatars.com/api/?background=e60023&color=ffffff&bold=true&name=Deep" alt="User Profile" class="avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); object-fit: cover;">
+        </div>
+      </div>
+    </header>
+
+    <!-- Hidden compatibility DOM nodes to prevent JS crashes -->
+    <div style="display: none;">
+      <button id="btn-hamburger"></button>
+      <div id="drawer-mask"></div>
+      <aside id="sidebar-drawer"></aside>
+      <button id="btn-toggle-tags"></button>
+      <div id="sidebar-categories-container"></div>
+      <button id="nav-history"></button>
+      <div id="modal-neg-block"></div>
+      <div id="modal-neg-prompt-text"></div>
+      <button id="btn-copy-neg"></button>
+      <textarea id="submit-field-neg-prompt"></textarea>
+    </div>
+
+    <!-- Main Content Panel -->
+    <main class="main-content">
+      
+      <!-- Main Feed view -->
+      <div id="feed-view-container">
+        <!-- Top Filters & Sorting Row -->
+        <div class="pinterest-filters-row">
+          <!-- Categories Filter pills row -->
+          <div class="pills-container" id="pills-filter-container">
+            <button class="pill-chip active" data-category="all">All</button>
+            <!-- Dynamic categories loaded here -->
+          </div>
+
+          <!-- Sorting tabs -->
+          <div class="sorting-tabs">
+            <div class="sort-tab active" data-sort="featured">Featured</div>
+            <div class="sort-tab" data-sort="newest">Newest</div>
+            <div class="sort-tab" data-sort="popular">Popular</div>
+          </div>
+        </div>
+
+        <!-- Popular Keywords Row -->
+        <div class="keywords-row">
+          <span class="keywords-label">Popular:</span>
+          <div class="keywords-pills" id="keywords-pills-container">
+            <!-- Clickable keywords loaded dynamically -->
+          </div>
+        </div>
+
+        <!-- True Masonry grid layout gallery -->
+        <div class="grid-layout" id="prompts-grid">
+          <!-- Cards loaded dynamically -->
+          <div class="empty-state" style="display: none;" id="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <h3>No prompts in this collection</h3>
+            <p>Try resetting filters or searching for other items.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Page view container -->
+      <div id="profile-view-container" class="hidden" style="max-width: 1200px; margin: 1.5rem auto; padding: 0 1.5rem;">
+        <div class="profile-header-card" style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 2rem;">
+          <img src="https://ui-avatars.com/api/?background=e60023&color=ffffff&bold=true&size=150&name=Deep" alt="User Profile" style="width: 110px; height: 110px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 0.85rem; object-fit: cover;">
+          <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.15rem; color: var(--text-primary);">Deep</h2>
+          <span style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 0.65rem;">@deepthedesigner</span>
+          <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.85rem; font-weight: 500;">
+            <span><strong>1,240</strong> followers</span> · <span><strong>480</strong> following</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary" style="border-radius: 24px; padding: 0.5rem 1.15rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; border: 1px solid var(--border-color); background:#ffffff;">Share</button>
+            <button class="btn btn-secondary" style="border-radius: 24px; padding: 0.5rem 1.15rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; border: 1px solid var(--border-color); background:#ffffff;">Edit Profile</button>
+          </div>
+        </div>
+
+        <div class="profile-tabs-row" style="display: flex; justify-content: center; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+          <button class="profile-tab-btn active" id="profile-tab-created" style="background: none; border: none; padding: 0.65rem 0.5rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; color: var(--text-primary); border-bottom: 3px solid #111111; margin-bottom: -2px; transition: all 0.15s ease;">
+            Created
+          </button>
+          <button class="profile-tab-btn" id="profile-tab-liked" style="background: none; border: none; padding: 0.65rem 0.5rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; color: var(--text-secondary); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s ease;">
+            Liked
+          </button>
+        </div>
+
+        <div class="grid-layout" id="profile-prompts-grid">
+          <!-- Profile prompts load dynamically here -->
+        </div>
+        
+        <div id="profile-empty-state" style="display: none; text-align: center; padding: 3.5rem 1rem; color: var(--text-secondary);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🖼️</div>
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem;">No prompts found</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Prompts you submit or like will appear here.</p>
+        </div>
+      </div>
+
+      <!-- Floating Bottom navigation dock -->
+      <div class="floating-dock">
+        <button class="dock-item active" id="dock-btn-home" title="Home">
+          <i data-lucide="home" style="width: 18px; height: 18px;"></i>
+        </button>
+        <button class="dock-item" id="dock-btn-history" title="History">
+          <i data-lucide="history" style="width: 18px; height: 18px;"></i>
+        </button>
+        <button class="dock-item" id="dock-btn-favorites" title="Sparkles">
+          <i data-lucide="sparkles" style="width: 18px; height: 18px;"></i>
+        </button>
+        <div class="dock-separator"></div>
+        <button class="dock-item" id="dock-btn-add" title="Submit prompt">
+          <i data-lucide="plus" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <!-- Floating Bottom-Right Promotion Announcement Card -->
+      <div class="floating-promo-card hidden" id="promo-announcement-card">
+        <button class="promo-close-btn" id="btn-close-promo" aria-label="Close card">
+          <i data-lucide="x" style="width:12px; height:12px;"></i>
+        </button>
+        <div class="promo-image-wrapper">
+          <img src="" alt="Promo image" class="promo-image" id="promo-card-image">
+        </div>
+        <div class="promo-content">
+          <h4 class="promo-title" id="promo-card-title">-</h4>
+          <p class="promo-text" id="promo-card-text">-</p>
+          <button class="btn btn-primary" id="btn-promo-action" style="background:#ffffff; color:#000000; width:100%; border-radius:100px; font-size:0.75rem; padding: 0.45rem;">
+            Try it
+          </button>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Prompt Details Modal overlay -->
+  <div class="modal-overlay" id="prompt-modal">
+    <div class="modal-container">
+      <button class="modal-close-btn" id="modal-close" aria-label="Close details modal">
+        <i data-lucide="x"></i>
+      </button>
+      <div class="modal-body">
+        <!-- Left Image -->
+        <div class="modal-img-col">
+          <img src="" alt="" class="modal-image" id="modal-img">
+        </div>
+        <!-- Right details -->
+        <div class="modal-details-col">
+          
+          <!-- Creator Profile Row -->
+          <div class="modal-creator-profile">
+            <div class="modal-profile-info">
+              <!-- circular creator profile image -->
+              <img src="/uploads/placeholder.png" alt="Profile" class="modal-profile-img" id="modal-creator-avatar-img">
+              <div class="modal-profile-text">
+                <a href="" target="_blank" id="modal-profile-link-btn" class="modal-profile-name">Creator</a>
+                <span class="modal-profile-handle" id="modal-profile-handle-text">@creator</span>
+              </div>
+            </div>
+            <!-- Platform Brand badge -->
+            <div class="modal-profile-brand">
+              <i data-lucide="zap" style="width: 14px; height: 14px; color: #e60023;"></i>
+              <span>Prompt AI</span>
+            </div>
+          </div>
+
+          <h2 class="modal-title" id="modal-title" style="margin-top: 0.25rem;">Prompt Title</h2>
+          <div class="modal-meta-row" id="modal-badges"></div>
+
+          <!-- Actions Row (Like count + Copy Button) -->
+          <div class="modal-actions-row">
+            <button class="modal-action-btn-like" id="modal-btn-like">
+              <i data-lucide="heart" style="width: 16px; height: 16px;"></i>
+              <span id="modal-like-count">125</span>
+            </button>
+            <button class="modal-action-btn-copy" id="btn-copy-prompt">
+              <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+              Copy Prompt
+            </button>
+          </div>
+          
+          <div class="modal-prompt-label">Prompt</div>
+          <div class="modal-prompt-card-text" id="modal-prompt-text"></div>
+
+
+
+          <!-- Params -->
+          <div class="params-grid" style="margin-top: 0.25rem;">
+            <div class="param-item">
+              <div class="param-name">Aspect Ratio</div>
+              <div class="param-value" id="val-ratio">-</div>
+            </div>
+            <div class="param-item">
+              <div class="param-name">CFG Scale</div>
+              <div class="param-value" id="val-cfg">-</div>
+            </div>
+            <div class="param-item">
+              <div class="param-name">Steps</div>
+              <div class="param-value" id="val-steps">-</div>
+            </div>
+            <div class="param-item">
+              <div class="param-name">Sampler</div>
+              <div class="param-value" id="val-sampler">-</div>
+            </div>
+            <div class="param-item" style="grid-column: span 2;">
+              <div class="param-name">Seed</div>
+              <div class="param-value" id="val-seed">-</div>
+            </div>
+          </div>
+
+          <!-- Related prompts gallery section "More like this" -->
+          <div class="modal-related-section">
+            <div class="modal-related-title">More like this</div>
+            <div class="modal-related-grid" id="modal-related-grid">
+              <!-- Related grid cards load dynamically -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Public Submit Prompt Form modal -->
+  <div class="modal-overlay" id="submit-prompt-modal">
+    <div class="modal-container" style="max-width: 700px;">
+      <button class="modal-close-btn" id="btn-close-submit-modal" aria-label="Close submit form">
+        <i data-lucide="x"></i>
+      </button>
+      <div style="padding: 2rem;">
+        <h2 class="modal-title" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">Submit New Prompt</h2>
+        
+        <form id="public-submit-form">
+          <div class="form-grid">
+            
+            <div class="form-group full-width">
+              <label for="submit-field-title">Art Title / Headline</label>
+              <input type="text" id="submit-field-title" class="form-control" placeholder="e.g. Beautiful Sunset in Swiss Alps" required>
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-creator-name">Creator Name / Handle (Optional)</label>
+              <input type="text" id="submit-field-creator-name" class="form-control" placeholder="e.g. @john_designer">
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-creator-link">Social Link (Optional)</label>
+              <input type="url" id="submit-field-creator-link" class="form-control" placeholder="e.g. https://instagram.com/handle">
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-category">Category</label>
+              <select id="submit-field-category" class="form-control" required></select>
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-model">AI Model Used</label>
+              <select id="submit-field-model" class="form-control" required>
+                <option value="Midjourney">Midjourney</option>
+                <option value="Flux">Flux</option>
+                <option value="Stable Diffusion">Stable Diffusion</option>
+                <option value="DALL-E 3">DALL-E 3</option>
+              </select>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="submit-field-prompt-text">Text Prompt</label>
+              <textarea id="submit-field-prompt-text" class="form-control" placeholder="Write exact prompt text used to generate the image..." required style="min-height: 100px;"></textarea>
+            </div>
+
+
+
+            <div class="form-group full-width" style="border: 1px dashed var(--border-color); padding: 1.25rem; border-radius: 8px; margin: 0.5rem 0;">
+              <label>Upload Generated Picture</label>
+              <div class="file-upload-container">
+                <div class="image-preview-box" id="submit-image-preview">
+                  <span class="image-preview-placeholder">🖼️</span>
+                </div>
+                <div class="file-upload-input-wrapper">
+                  <input type="file" id="submit-field-image-file" accept="image/*" style="margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.7rem; color: var(--text-muted); text-align: center;">— OR PASTE IMAGE URL —</span>
+                  <input type="text" id="submit-field-image-url" class="form-control" placeholder="https://example.com/artwork.jpg">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-ratio">Aspect Ratio</label>
+              <select id="submit-field-ratio" class="form-control">
+                <option value="1:1">1:1 (Square)</option>
+                <option value="16:9">16:9 (Landscape)</option>
+                <option value="9:16">9:16 (Portrait)</option>
+                <option value="4:3">4:3 (Standard)</option>
+                <option value="3:4">3:4 (Tall)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-cfg">CFG Scale / Guidance</label>
+              <input type="text" id="submit-field-cfg" class="form-control" placeholder="7.0">
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-steps">Steps</label>
+              <input type="text" id="submit-field-steps" class="form-control" placeholder="30">
+            </div>
+
+            <div class="form-group">
+              <label for="submit-field-sampler">Sampler Method</label>
+              <input type="text" id="submit-field-sampler" class="form-control" placeholder="e.g. Euler a">
+            </div>
+
+            <div class="form-group full-width">
+              <label for="submit-field-seed">Seed Value</label>
+              <input type="text" id="submit-field-seed" class="form-control" placeholder="Random">
+            </div>
+          </div>
+
+          <div class="btn-group" style="justify-content: flex-end; margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-submit">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit for Review</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast popup alert -->
+  <div class="toast" id="toast-notification">
+    <i data-lucide="check" class="toast-icon"></i>
+    <span class="toast-message">Copied to clipboard!</span>
+  </div>
+
+  <script src="/js/app_v4.js?v=4.1"></script>
+</body>
+</html>
