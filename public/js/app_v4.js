@@ -1006,40 +1006,14 @@ function setupEvents() {
       studioResultState.style.display = 'none';
 
       try {
-        // 1. Fetch HF Token from backend config route
-        let hfToken = '';
-        try {
-          const configRes = await fetch(`${API_BASE}/api/config/hf`);
-          if (configRes.ok) {
-            const configData = await configRes.json();
-            hfToken = configData.token;
-          }
-        } catch (e) {
-          console.warn("Failed to fetch token from backend, trying without token:", e);
-        }
+        // Query Pollinations.ai directly from the browser (100% free, stable, zero-auth, and works everywhere!)
+        const modelParam = studioModel.value === 'sdxl' ? 'turbo' : 'flux';
+        const pollinationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(promptVal)}?width=1024&height=1024&nologo=true&model=${modelParam}&seed=${Math.floor(Math.random() * 1000000)}`;
 
-        // 2. Query Hugging Face API directly from browser (bypasses Vercel timeout/DNS issues)
-        let modelUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
-        if (studioModel.value === 'sdxl') {
-          modelUrl = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0';
-        }
-
-        const headers = {
-          'Content-Type': 'application/json'
-        };
-        if (hfToken) {
-          headers['Authorization'] = `Bearer ${hfToken}`;
-        }
-
-        const hfRes = await fetch(modelUrl, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify({ inputs: promptVal })
-        });
+        const hfRes = await fetch(pollinationUrl);
 
         if (!hfRes.ok) {
-          const errData = await hfRes.json().catch(() => ({}));
-          throw new Error(errData.error || `AI model returned error status ${hfRes.status}`);
+          throw new Error(`AI model returned error status ${hfRes.status}`);
         }
 
         // Convert the binary image response to base64 data URL
