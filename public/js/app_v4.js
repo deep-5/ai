@@ -966,7 +966,14 @@ function setupEvents() {
   });
 
   dockBtnFavorites.addEventListener('click', () => {
-    window.location.href = 'https://gemini.google.com/';
+    feedViewContainer.classList.add('hidden');
+    profileViewContainer.classList.add('hidden');
+    if (studioViewContainer) studioViewContainer.classList.remove('hidden');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    dockBtnHome.classList.remove('active');
+    dockBtnHistory.classList.remove('active');
+    dockBtnFavorites.classList.add('active');
   });
 
   dockBtnAdd.addEventListener('click', openSubmitModal);
@@ -984,53 +991,16 @@ function setupEvents() {
   }
 
   if (studioBtnGenerate) {
-    studioBtnGenerate.addEventListener('click', async () => {
+    studioBtnGenerate.addEventListener('click', () => {
       const promptVal = studioPrompt.value.trim();
       if (!promptVal) {
         alert("Please enter a prompt first!");
         return;
       }
 
-      studioBtnGenerate.disabled = true;
-      studioBtnGenerate.innerHTML = `<span class="spinner" style="width:16px; height:16px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px;"></span> Generating...`;
-      
-      studioOutputBlock.style.display = 'block';
-      studioLoadingState.style.display = 'block';
-      studioResultState.style.display = 'none';
-
-      try {
-        // Query Pollinations.ai directly with enhanced prompt modifiers for ultra-high quality!
-        const enhancedPrompt = promptVal + ", highly detailed, photorealistic, 8k resolution, cinematic lighting, masterpiece, 3d render, award winning photography";
-        const modelParam = studioModel.value === 'sdxl' ? 'turbo' : 'flux';
-        const pollinationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&model=${modelParam}&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
-
-        const hfRes = await fetch(pollinationUrl);
-
-        if (!hfRes.ok) {
-          throw new Error(`AI model returned error status ${hfRes.status}`);
-        }
-
-        // Convert the binary image response to base64 data URL
-        const blob = await hfRes.blob();
-        
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          generatedImageBase64 = reader.result;
-          studioResultImg.src = reader.result;
-          studioLoadingState.style.display = 'none';
-          studioResultState.style.display = 'block';
-        };
-        reader.readAsDataURL(blob);
-
-      } catch (err) {
-        console.error("Browser generation error:", err);
-        alert(`Generation failed: ${err.message || 'Please try again.'}`);
-        studioOutputBlock.style.display = 'none';
-      } finally {
-        studioBtnGenerate.disabled = false;
-        studioBtnGenerate.innerHTML = `<i data-lucide="sparkles" style="width: 16px; height: 16px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Generate AI Image`;
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-      }
+      // Generate a query link to open Google Gemini with prompt pre-filled and automatically generating!
+      const geminiUrl = `https://gemini.google.com/app?q=generate%20image%20of%20${encodeURIComponent(promptVal)}`;
+      window.open(geminiUrl, '_blank');
     });
   }
 
