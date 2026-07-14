@@ -130,6 +130,11 @@ async function getSettings() {
 
 // ------------------- API ROUTES -------------------
 
+// AI Image Generation Config Status
+app.get('/api/config/gemini', (req, res) => {
+  res.json({ hasKey: !!process.env.GEMINI_API_KEY });
+});
+
 // AI Image Generation Endpoint (Google Gemini Imagen 3 with Pollinations Flux Fallback)
 app.post('/api/generate', async (req, res) => {
   const { prompt } = req.body;

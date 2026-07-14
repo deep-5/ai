@@ -1006,24 +1006,61 @@ function setupEvents() {
       studioResultState.style.display = 'none';
 
       try {
-        const res = await fetch(`${API_BASE}/api/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: promptVal })
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to generate image");
+        // 1. Check if Gemini API key is configured on Vercel backend
+        let hasGeminiKey = false;
+        try {
+          const configRes = await fetch(`${API_BASE}/api/config/gemini`);
+          if (configRes.ok) {
+            const configData = await configRes.json();
+            hasGeminiKey = configData.hasKey;
+          }
+        } catch (e) {
+          console.warn("Failed to fetch config, defaulting to client-side:", e);
         }
 
-        generatedImageBase64 = data.image;
-        studioResultImg.src = data.image;
+        let imageData = null;
+
+        if (hasGeminiKey) {
+          // Option A: Call backend to generate via Google Gemini API
+          const res = await fetch(`${API_BASE}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: promptVal })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to generate image via Gemini");
+          }
+          imageData = data.image;
+        } else {
+          // Option B: Call Pollinations AI directly from the browser (bypasses Vercel DNS/Timeout)
+          const enhancedPrompt = promptVal + ", highly detailed, photorealistic, 8k resolution, cinematic lighting, masterpiece, award winning photography";
+          const modelParam = studioModel.value === 'sdxl' ? 'turbo' : 'flux';
+          const pollinationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&model=${modelParam}&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
+
+          const pollRes = await fetch(pollinationUrl);
+          if (!pollRes.ok) {
+            throw new Error(`Fallback model returned status ${pollRes.status}`);
+          }
+
+          const blob = await pollRes.blob();
+          
+          imageData = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("Failed to parse generated image"));
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        generatedImageBase64 = imageData;
+        studioResultImg.src = imageData;
         
         studioLoadingState.style.display = 'none';
         studioResultState.style.display = 'block';
       } catch (err) {
-        console.error("Gemini generation error:", err);
+        console.error("AI Generation error:", err);
         alert(`Generation failed: ${err.message || 'Please try again.'}`);
         studioOutputBlock.style.display = 'none';
       } finally {
