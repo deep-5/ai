@@ -130,45 +130,74 @@ async function getSettings() {
 
 // ------------------- API ROUTES -------------------
 
-// AI Image Generation Endpoint (Hugging Face Wrapper)
+// AI Image Generation Endpoint (Hugging Face Wrapper using core https module)
 app.post('/api/generate', async (req, res) => {
   const { prompt, model } = req.body;
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
-  // Hugging Face model mapping
   let modelUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
   if (model === 'sdxl') {
     modelUrl = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0';
   }
 
   const hfToken = process.env.HF_TOKEN;
-  const headers = {};
+  const headers = {
+    'Content-Type': 'application/json'
+  };
   if (hfToken) {
     headers['Authorization'] = `Bearer ${hfToken}`;
   }
-  headers['Content-Type'] = 'application/json';
 
+  const https = require('https');
+  
   try {
-    const hfRes = await fetch(modelUrl, {
+    const parsedUrl = new URL(modelUrl);
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname,
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ inputs: prompt })
+      timeout: 25000 // 25 seconds timeout
+    };
+
+    const hfRequest = new Promise((resolve, reject) => {
+      const request = https.request(options, (response) => {
+        const chunks = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          resolve({
+            statusCode: response.statusCode,
+            buffer: buffer
+          });
+        });
+      });
+
+      request.on('error', (err) => reject(err));
+      request.on('timeout', () => {
+        request.destroy();
+        reject(new Error('Hugging Face API request timed out'));
+      });
+
+      request.write(JSON.stringify({ inputs: prompt }));
+      request.end();
     });
 
-    if (!hfRes.ok) {
-      const errText = await hfRes.text();
-      console.error('Hugging Face API error:', errText);
-      return res.status(hfRes.status).json({ error: `AI model error: ${errText || 'Failed to generate image'}` });
+    const result = await hfRequest;
+    
+    if (result.statusCode < 200 || result.statusCode >= 300) {
+      const errText = result.buffer.toString();
+      console.error('Hugging Face API error:', result.statusCode, errText);
+      return res.status(result.statusCode).json({ error: `AI model error (${result.statusCode}): ${errText || 'Failed to generate'}` });
     }
 
-    const buffer = await hfRes.arrayBuffer();
-    const base64String = Buffer.from(buffer).toString('base64');
+    const base64String = result.buffer.toString('base64');
     res.json({ image: `data:image/jpeg;base64,${base64String}` });
   } catch (err) {
     console.error('Generation server error:', err);
-    res.status(500).json({ error: 'Internal server error while generating image' });
+    res.status(500).json({ error: `Internal server error: ${err.message || 'Failed to generate image'}` });
   }
 });
 
