@@ -131,6 +131,62 @@
         </div>
       </div>
 
+      <!-- AI Generator Studio view container -->
+      <div id="studio-view-container" class="hidden" style="max-width: 800px; margin: 1.5rem auto; padding: 0 1.5rem;">
+        <div class="studio-header" style="text-align: center; margin-bottom: 2rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem; display: inline-block; animation: pulse 2s infinite;">✨</div>
+          <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--text-primary);">AI Image Generator</h2>
+          <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 500px; margin: 0 auto;">Type your prompt below to generate stunning high-resolution AI art instantly using Hugging Face serverless models.</p>
+        </div>
+
+        <div class="studio-card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 24px; padding: 2rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03); margin-bottom: 2rem;">
+          <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">PROMPT</label>
+            <textarea id="studio-prompt" placeholder="A realistic portrait of a young girl standing in the autumn rain, colorful maple leaves falling..." style="width: 100%; min-height: 100px; padding: 1rem; border: 1px solid var(--border-color); border-radius: 12px; font-family: inherit; font-size: 0.95rem; resize: vertical; box-sizing: border-box; outline: none; transition: border-color 0.2s;"></textarea>
+            <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+              <button id="studio-btn-random" class="btn-text" style="background: none; border: none; color: #e60023; font-weight: 700; font-size: 0.8rem; cursor: pointer;">🎲 Use Random Prompt Idea</button>
+            </div>
+          </div>
+
+          <div class="form-row" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <div class="form-group" style="flex: 1; min-width: 200px;">
+              <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">AI MODEL</label>
+              <select id="studio-model" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 12px; font-family: inherit; font-size: 0.9rem; outline: none; background: #ffffff; cursor: pointer;">
+                <option value="flux">FLUX.1-schnell (Fastest & High Quality)</option>
+                <option value="sdxl">Stable Diffusion XL</option>
+              </select>
+            </div>
+          </div>
+
+          <button id="studio-btn-generate" style="width: 100%; padding: 0.85rem; background: #111111; color: #ffffff; border: none; border-radius: 99px; font-weight: 700; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background-color 0.2s, transform 0.1s;">
+            <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Generate AI Image
+          </button>
+        </div>
+
+        <!-- Generation Output Block -->
+        <div id="studio-output-block" style="display: none; text-align: center; background: #ffffff; border: 1px solid var(--border-color); border-radius: 24px; padding: 2rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03);">
+          <div id="studio-loading-state" style="display: none; padding: 2rem 0;">
+            <div class="spinner" style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #111111; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem auto;"></div>
+            <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem;">Generating your masterpiece...</h4>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">This usually takes 3 to 10 seconds. Please wait.</p>
+          </div>
+
+          <div id="studio-result-state" style="display: none;">
+            <div style="position: relative; max-width: 480px; margin: 0 auto 1.5rem auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.08);">
+              <img id="studio-result-img" src="" alt="Generated AI Art" style="width: 100%; display: block;">
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+              <button id="studio-btn-download" class="btn btn-secondary" style="border-radius: 24px; padding: 0.65rem 1.25rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; border: 1px solid var(--border-color); background: #ffffff; display: flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="download" style="width: 14px; height: 14px;"></i> Download Image
+              </button>
+              <button id="studio-btn-publish" class="btn btn-primary" style="border-radius: 24px; padding: 0.65rem 1.25rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; border: none; background: #e60023; color: #ffffff; display: flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="upload-cloud" style="width: 14px; height: 14px;"></i> Publish to Gallery
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Floating Bottom navigation dock -->
       <div class="floating-dock">
         <button class="dock-item active" id="dock-btn-home" title="Home">

@@ -12,6 +12,8 @@ let state = {
   searchQuery: ''
 };
 let profileActiveTab = 'created';
+let generatedImageBase64 = null;
+let isGenerating = false;
 
 // Popular Keywords List
 const POPULAR_KEYWORDS = [
@@ -40,6 +42,19 @@ const profileEmptyState = document.getElementById('profile-empty-state');
 const profileTabCreated = document.getElementById('profile-tab-created');
 const profileTabLiked = document.getElementById('profile-tab-liked');
 const pinterestProfileAvatar = document.querySelector('.pinterest-profile-avatar');
+
+// AI Generator Studio DOM elements
+const studioViewContainer = document.getElementById('studio-view-container');
+const studioPrompt = document.getElementById('studio-prompt');
+const studioModel = document.getElementById('studio-model');
+const studioBtnGenerate = document.getElementById('studio-btn-generate');
+const studioBtnRandom = document.getElementById('studio-btn-random');
+const studioOutputBlock = document.getElementById('studio-output-block');
+const studioLoadingState = document.getElementById('studio-loading-state');
+const studioResultState = document.getElementById('studio-result-state');
+const studioResultImg = document.getElementById('studio-result-img');
+const studioBtnDownload = document.getElementById('studio-btn-download');
+const studioBtnPublish = document.getElementById('studio-btn-publish');
 
 // Floating Controls
 const dockBtnHome = document.getElementById('dock-btn-home');
@@ -285,6 +300,11 @@ function renderKeywordsUI() {
 
 // Synchronize Category Selection on click
 function selectCategory(catId) {
+  // Switch to feed view container
+  feedViewContainer.classList.remove('hidden');
+  profileViewContainer.classList.add('hidden');
+  if (studioViewContainer) studioViewContainer.classList.add('hidden');
+
   state.activeCategory = catId;
   state.searchQuery = '';
   if (searchInput) searchInput.value = '';
@@ -313,6 +333,8 @@ function selectCategory(catId) {
   if (catId === 'all') {
     navHome.classList.add('active');
     dockBtnHome.classList.add('active');
+    dockBtnHistory.classList.remove('active');
+    dockBtnFavorites.classList.remove('active');
   } else {
     navHome.classList.remove('active');
     dockBtnHome.classList.remove('active');
@@ -790,6 +812,16 @@ submitFieldImageUrl.addEventListener('input', (e) => {
   }
 });
 
+// Helper to convert base64 data URL to File object
+function dataURLtoFile(dataurl, filename) {
+  var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+      bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+  while(n--){
+      u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, {type:mime});
+}
+
 // Form Submission logic
 publicSubmitForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -806,6 +838,10 @@ publicSubmitForm.addEventListener('submit', async (e) => {
   const file = submitFieldImageFile.files[0];
   if (file) {
     formData.append('image', file);
+  } else if (generatedImageBase64) {
+    // Append generated base64 image converted to file
+    const generatedFile = dataURLtoFile(generatedImageBase64, 'generated-art.jpg');
+    formData.append('image', generatedFile);
   } else {
     formData.append('imageUrl', submitFieldImageUrl.value.trim());
   }
@@ -900,6 +936,10 @@ function setupEvents() {
 
   // Floating dock actions
   dockBtnHome.addEventListener('click', () => {
+    feedViewContainer.classList.remove('hidden');
+    profileViewContainer.classList.add('hidden');
+    if (studioViewContainer) studioViewContainer.classList.add('hidden');
+
     selectCategory('all');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     dockBtnHome.classList.add('active');
@@ -908,13 +948,17 @@ function setupEvents() {
   });
 
   dockBtnHistory.addEventListener('click', () => {
+    feedViewContainer.classList.add('hidden');
+    profileViewContainer.classList.remove('hidden');
+    if (studioViewContainer) studioViewContainer.classList.add('hidden');
+
     // Show newest first
     state.activeSort = 'newest';
     sortingTabs.forEach(t => {
       if(t.getAttribute('data-sort') === 'newest') t.classList.add('active');
       else t.classList.remove('active');
     });
-    fetchPrompts();
+    renderProfilePrompts();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     dockBtnHome.classList.remove('active');
     dockBtnHistory.classList.add('active');
@@ -922,13 +966,10 @@ function setupEvents() {
   });
 
   dockBtnFavorites.addEventListener('click', () => {
-    // Show popular first
-    state.activeSort = 'popular';
-    sortingTabs.forEach(t => {
-      if(t.getAttribute('data-sort') === 'popular') t.classList.add('active');
-      else t.classList.remove('active');
-    });
-    fetchPrompts();
+    feedViewContainer.classList.add('hidden');
+    profileViewContainer.classList.add('hidden');
+    if (studioViewContainer) studioViewContainer.classList.remove('hidden');
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
     dockBtnHome.classList.remove('active');
     dockBtnHistory.classList.remove('active');
@@ -936,6 +977,85 @@ function setupEvents() {
   });
 
   dockBtnAdd.addEventListener('click', openSubmitModal);
+
+  // AI Generator Studio Actions
+  if (studioBtnRandom) {
+    studioBtnRandom.addEventListener('click', () => {
+      if (state.prompts.length > 0) {
+        const randomPrompt = state.prompts[Math.floor(Math.random() * state.prompts.length)];
+        studioPrompt.value = randomPrompt.promptText;
+      } else {
+        studioPrompt.value = "A realistic portrait of a beautiful Indian woman wearing a red traditional wedding saree, golden jewelry, soft focus background, highly detailed, 8k resolution";
+      }
+    });
+  }
+
+  if (studioBtnGenerate) {
+    studioBtnGenerate.addEventListener('click', async () => {
+      const promptVal = studioPrompt.value.trim();
+      if (!promptVal) {
+        alert("Please enter a prompt first!");
+        return;
+      }
+
+      studioBtnGenerate.disabled = true;
+      studioBtnGenerate.innerHTML = `<span class="spinner" style="width:16px; height:16px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px;"></span> Generating...`;
+      
+      studioOutputBlock.style.display = 'block';
+      studioLoadingState.style.display = 'block';
+      studioResultState.style.display = 'none';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: promptVal, model: studioModel.value })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to generate image");
+        }
+
+        generatedImageBase64 = data.image;
+        studioResultImg.src = data.image;
+        
+        studioLoadingState.style.display = 'none';
+        studioResultState.style.display = 'block';
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "An error occurred while generating the image.");
+        studioOutputBlock.style.display = 'none';
+      } finally {
+        studioBtnGenerate.disabled = false;
+        studioBtnGenerate.innerHTML = `<i data-lucide="sparkles" style="width: 16px; height: 16px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Generate AI Image`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
+  }
+
+  if (studioBtnDownload) {
+    studioBtnDownload.addEventListener('click', () => {
+      if (!generatedImageBase64) return;
+      const link = document.createElement('a');
+      link.href = generatedImageBase64;
+      link.download = 'generated-ai-art.jpg';
+      link.click();
+    });
+  }
+
+  if (studioBtnPublish) {
+    studioBtnPublish.addEventListener('click', () => {
+      if (!generatedImageBase64) return;
+      openSubmitModal();
+      // Pre-fill fields
+      document.getElementById('submit-field-prompt-text').value = studioPrompt.value;
+      submitImagePreview.innerHTML = `<img src="${generatedImageBase64}" alt="Submit Preview">`;
+      // Clear file/url inputs so they don't override the generated image
+      submitFieldImageFile.value = '';
+      submitFieldImageUrl.value = '';
+    });
+  }
 
   // Floating Promo Card action bindings
   btnClosePromo.addEventListener('click', () => {

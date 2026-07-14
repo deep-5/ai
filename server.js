@@ -130,6 +130,48 @@ async function getSettings() {
 
 // ------------------- API ROUTES -------------------
 
+// AI Image Generation Endpoint (Hugging Face Wrapper)
+app.post('/api/generate', async (req, res) => {
+  const { prompt, model } = req.body;
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  // Hugging Face model mapping
+  let modelUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
+  if (model === 'sdxl') {
+    modelUrl = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0';
+  }
+
+  const hfToken = process.env.HF_TOKEN;
+  const headers = {};
+  if (hfToken) {
+    headers['Authorization'] = `Bearer ${hfToken}`;
+  }
+  headers['Content-Type'] = 'application/json';
+
+  try {
+    const hfRes = await fetch(modelUrl, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ inputs: prompt })
+    });
+
+    if (!hfRes.ok) {
+      const errText = await hfRes.text();
+      console.error('Hugging Face API error:', errText);
+      return res.status(hfRes.status).json({ error: `AI model error: ${errText || 'Failed to generate image'}` });
+    }
+
+    const buffer = await hfRes.arrayBuffer();
+    const base64String = Buffer.from(buffer).toString('base64');
+    res.json({ image: `data:image/jpeg;base64,${base64String}` });
+  } catch (err) {
+    console.error('Generation server error:', err);
+    res.status(500).json({ error: 'Internal server error while generating image' });
+  }
+});
+
 // Auth APIs
 app.post('/api/auth/login', async (req, res) => {
   const { password } = req.body;
