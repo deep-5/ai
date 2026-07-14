@@ -966,7 +966,14 @@ function setupEvents() {
   });
 
   dockBtnFavorites.addEventListener('click', () => {
-    window.open('https://gemini.google.com/', '_blank');
+    feedViewContainer.classList.add('hidden');
+    profileViewContainer.classList.add('hidden');
+    if (studioViewContainer) studioViewContainer.classList.remove('hidden');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    dockBtnHome.classList.remove('active');
+    dockBtnHistory.classList.remove('active');
+    dockBtnFavorites.classList.add('active');
   });
 
   dockBtnAdd.addEventListener('click', openSubmitModal);
@@ -999,9 +1006,10 @@ function setupEvents() {
       studioResultState.style.display = 'none';
 
       try {
-        // Query Pollinations.ai directly from the browser (100% free, stable, zero-auth, and works everywhere!)
+        // Query Pollinations.ai directly with enhanced prompt modifiers for ultra-high quality!
+        const enhancedPrompt = promptVal + ", highly detailed, photorealistic, 8k resolution, cinematic lighting, masterpiece, 3d render, award winning photography";
         const modelParam = studioModel.value === 'sdxl' ? 'turbo' : 'flux';
-        const pollinationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(promptVal)}?width=1024&height=1024&nologo=true&model=${modelParam}&seed=${Math.floor(Math.random() * 1000000)}`;
+        const pollinationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&model=${modelParam}&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
 
         const hfRes = await fetch(pollinationUrl);
 
