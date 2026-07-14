@@ -334,7 +334,7 @@ function selectCategory(catId) {
     navHome.classList.add('active');
     dockBtnHome.classList.add('active');
     dockBtnHistory.classList.remove('active');
-    dockBtnFavorites.classList.remove('active');
+    if (dockBtnFavorites) dockBtnFavorites.classList.remove('active');
   } else {
     navHome.classList.remove('active');
     dockBtnHome.classList.remove('active');
@@ -944,7 +944,7 @@ function setupEvents() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     dockBtnHome.classList.add('active');
     dockBtnHistory.classList.remove('active');
-    dockBtnFavorites.classList.remove('active');
+    if (dockBtnFavorites) dockBtnFavorites.classList.remove('active');
   });
 
   dockBtnHistory.addEventListener('click', () => {
@@ -962,18 +962,7 @@ function setupEvents() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     dockBtnHome.classList.remove('active');
     dockBtnHistory.classList.add('active');
-    dockBtnFavorites.classList.remove('active');
-  });
-
-  dockBtnFavorites.addEventListener('click', () => {
-    feedViewContainer.classList.add('hidden');
-    profileViewContainer.classList.add('hidden');
-    if (studioViewContainer) studioViewContainer.classList.remove('hidden');
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    dockBtnHome.classList.remove('active');
-    dockBtnHistory.classList.remove('active');
-    dockBtnFavorites.classList.add('active');
+    if (dockBtnFavorites) dockBtnFavorites.classList.remove('active');
   });
 
   dockBtnAdd.addEventListener('click', openSubmitModal);
