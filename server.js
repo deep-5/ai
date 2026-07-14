@@ -130,9 +130,85 @@ async function getSettings() {
 
 // ------------------- API ROUTES -------------------
 
-// AI Image Generation Config Endpoint
-app.get('/api/config/hf', (req, res) => {
-  res.json({ token: process.env.HF_TOKEN || '' });
+// AI Image Generation Endpoint (Google Gemini Imagen 3 API)
+app.post('/api/generate', async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  // Retrieve Gemini API Key from environment variables
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in Vercel environment variables. Please add your key in Google AI Studio.' });
+  }
+
+  const geminiUrl = `https://generativeai.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${geminiApiKey}`;
+
+  const https = require('https');
+  
+  try {
+    const parsedUrl = new URL(geminiUrl);
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000 // 30 seconds timeout
+    };
+
+    const geminiRequest = new Promise((resolve, reject) => {
+      const request = https.request(options, (response) => {
+        const chunks = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          resolve({
+            statusCode: response.statusCode,
+            buffer: buffer
+          });
+        });
+      });
+
+      request.on('error', (err) => reject(err));
+      request.on('timeout', () => {
+        request.destroy();
+        reject(new Error('Gemini API request timed out'));
+      });
+
+      // Post body for Imagen 3 model
+      const body = {
+        prompt: prompt,
+        numberOfImages: 1,
+        outputMimeType: 'image/jpeg',
+        aspectRatio: '1:1'
+      };
+
+      request.write(JSON.stringify(body));
+      request.end();
+    });
+
+    const result = await geminiRequest;
+    
+    const resText = result.buffer.toString();
+    if (result.statusCode < 200 || result.statusCode >= 300) {
+      console.error('Gemini API error:', result.statusCode, resText);
+      return res.status(result.statusCode).json({ error: `Gemini API error (${result.statusCode}): ${resText || 'Failed to generate'}` });
+    }
+
+    const data = JSON.parse(resText);
+    if (!data.generatedImages || data.generatedImages.length === 0) {
+      return res.status(500).json({ error: 'No images returned from Gemini API' });
+    }
+
+    const base64Bytes = data.generatedImages[0].image.imageBytes;
+    res.json({ image: `data:image/jpeg;base64,${base64Bytes}` });
+  } catch (err) {
+    console.error('Generation server error:', err);
+    res.status(500).json({ error: `Internal server error: ${err.message || 'Failed to generate image'}` });
+  }
 });
 
 // Auth APIs

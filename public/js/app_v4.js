@@ -991,16 +991,46 @@ function setupEvents() {
   }
 
   if (studioBtnGenerate) {
-    studioBtnGenerate.addEventListener('click', () => {
+    studioBtnGenerate.addEventListener('click', async () => {
       const promptVal = studioPrompt.value.trim();
       if (!promptVal) {
         alert("Please enter a prompt first!");
         return;
       }
 
-      // Generate a query link to open Google Gemini with prompt pre-filled and automatically generating!
-      const geminiUrl = `https://gemini.google.com/app?q=generate%20image%20of%20${encodeURIComponent(promptVal)}`;
-      window.open(geminiUrl, '_blank');
+      studioBtnGenerate.disabled = true;
+      studioBtnGenerate.innerHTML = `<span class="spinner" style="width:16px; height:16px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin 1s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px;"></span> Generating...`;
+      
+      studioOutputBlock.style.display = 'block';
+      studioLoadingState.style.display = 'block';
+      studioResultState.style.display = 'none';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: promptVal })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to generate image");
+        }
+
+        generatedImageBase64 = data.image;
+        studioResultImg.src = data.image;
+        
+        studioLoadingState.style.display = 'none';
+        studioResultState.style.display = 'block';
+      } catch (err) {
+        console.error("Gemini generation error:", err);
+        alert(`Generation failed: ${err.message || 'Please try again.'}`);
+        studioOutputBlock.style.display = 'none';
+      } finally {
+        studioBtnGenerate.disabled = false;
+        studioBtnGenerate.innerHTML = `<i data-lucide="sparkles" style="width: 16px; height: 16px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Generate AI Image`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
     });
   }
 
