@@ -1,10 +1,6 @@
-const API_BASE = (
-  window.location.hostname === 'localhost' || 
-  window.location.hostname === '127.0.0.1' ||
-  window.location.hostname.includes('serveousercontent.com') ||
-  window.location.hostname.includes('serveo.net') ||
-  window.location.hostname.includes('loca.lt')
-) ? '' : 'https://ai-wn4o.onrender.com';
+const API_BASE = window.location.hostname.includes('pages.dev')
+  ? 'https://ai-3tep.vercel.app'
+  : '';
 
 // Global Application State
 let state = {
