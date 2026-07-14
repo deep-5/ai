@@ -68,8 +68,9 @@ function authenticateToken(req, res, next) {
 
 // Database startup setup helper
 async function initDbSchema() {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     // 1. Ensure storage policies exist
     await client.query(`
       do $$
@@ -101,10 +102,12 @@ async function initDbSchema() {
   } catch (err) {
     console.error("Schema initialization warning:", err.message);
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
-initDbSchema();
+if (process.env.NODE_ENV !== 'production') {
+  initDbSchema();
+}
 
 // Helper to format settings object from database rows
 async function getSettings() {
