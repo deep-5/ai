@@ -130,36 +130,92 @@ async function getSettings() {
 
 // ------------------- API ROUTES -------------------
 
-// AI Image Generation Endpoint (Google Gemini Imagen 3 API)
+// AI Image Generation Endpoint (Google Gemini Imagen 3 with Pollinations Flux Fallback)
 app.post('/api/generate', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
-  // Retrieve Gemini API Key from environment variables
   const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (!geminiApiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in Vercel environment variables. Please add your key in Google AI Studio.' });
+  const https = require('https');
+
+  if (geminiApiKey) {
+    // Option A: Use Google Gemini Imagen 3 if API Key is configured
+    const geminiUrl = `https://generativeai.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${geminiApiKey}`;
+    
+    try {
+      const parsedUrl = new URL(geminiUrl);
+      const options = {
+        hostname: parsedUrl.hostname,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000 // 30 seconds timeout
+      };
+
+      const geminiRequest = new Promise((resolve, reject) => {
+        const request = https.request(options, (response) => {
+          const chunks = [];
+          response.on('data', (chunk) => chunks.push(chunk));
+          response.on('end', () => {
+            const buffer = Buffer.concat(chunks);
+            resolve({
+              statusCode: response.statusCode,
+              buffer: buffer
+            });
+          });
+        });
+
+        request.on('error', (err) => reject(err));
+        request.on('timeout', () => {
+          request.destroy();
+          reject(new Error('Gemini API request timed out'));
+        });
+
+        const body = {
+          prompt: prompt,
+          numberOfImages: 1,
+          outputMimeType: 'image/jpeg',
+          aspectRatio: '1:1'
+        };
+
+        request.write(JSON.stringify(body));
+        request.end();
+      });
+
+      const result = await geminiRequest;
+      const resText = result.buffer.toString();
+      
+      if (result.statusCode >= 200 && result.statusCode < 300) {
+        const data = JSON.parse(resText);
+        if (data.generatedImages && data.generatedImages.length > 0) {
+          const base64Bytes = data.generatedImages[0].image.imageBytes;
+          return res.json({ image: `data:image/jpeg;base64,${base64Bytes}` });
+        }
+      }
+      console.warn('Gemini generation failed, falling back to Pollinations:', result.statusCode, resText);
+    } catch (err) {
+      console.warn('Gemini generation error, falling back to Pollinations:', err.message);
+    }
   }
 
-  const geminiUrl = `https://generativeai.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${geminiApiKey}`;
-
-  const https = require('https');
-  
+  // Option B: Fallback to Pollinations AI (Flux) - Completely free and keyless!
   try {
-    const parsedUrl = new URL(geminiUrl);
+    const enhancedPrompt = prompt + ", highly detailed, photorealistic, 8k resolution, cinematic lighting, masterpiece, award winning photography";
+    const pollinationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&model=flux&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
+
+    const parsedUrl = new URL(pollinationUrl);
     const options = {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000 // 30 seconds timeout
+      method: 'GET',
+      timeout: 25000 // 25 seconds timeout
     };
 
-    const geminiRequest = new Promise((resolve, reject) => {
+    const pollRequest = new Promise((resolve, reject) => {
       const request = https.request(options, (response) => {
         const chunks = [];
         response.on('data', (chunk) => chunks.push(chunk));
@@ -175,39 +231,21 @@ app.post('/api/generate', async (req, res) => {
       request.on('error', (err) => reject(err));
       request.on('timeout', () => {
         request.destroy();
-        reject(new Error('Gemini API request timed out'));
+        reject(new Error('Pollinations API request timed out'));
       });
 
-      // Post body for Imagen 3 model
-      const body = {
-        prompt: prompt,
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '1:1'
-      };
-
-      request.write(JSON.stringify(body));
       request.end();
     });
 
-    const result = await geminiRequest;
-    
-    const resText = result.buffer.toString();
-    if (result.statusCode < 200 || result.statusCode >= 300) {
-      console.error('Gemini API error:', result.statusCode, resText);
-      return res.status(result.statusCode).json({ error: `Gemini API error (${result.statusCode}): ${resText || 'Failed to generate'}` });
+    const result = await pollRequest;
+    if (result.statusCode >= 200 && result.statusCode < 300) {
+      const base64String = result.buffer.toString('base64');
+      return res.json({ image: `data:image/jpeg;base64,${base64String}` });
     }
-
-    const data = JSON.parse(resText);
-    if (!data.generatedImages || data.generatedImages.length === 0) {
-      return res.status(500).json({ error: 'No images returned from Gemini API' });
-    }
-
-    const base64Bytes = data.generatedImages[0].image.imageBytes;
-    res.json({ image: `data:image/jpeg;base64,${base64Bytes}` });
+    throw new Error(`Pollinations API returned error code ${result.statusCode}`);
   } catch (err) {
-    console.error('Generation server error:', err);
-    res.status(500).json({ error: `Internal server error: ${err.message || 'Failed to generate image'}` });
+    console.error('Generation fallback error:', err);
+    res.status(500).json({ error: `Image generation failed: ${err.message || 'Unknown error'}` });
   }
 });
 
