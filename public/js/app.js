@@ -966,14 +966,7 @@ function setupEvents() {
   });
 
   dockBtnFavorites.addEventListener('click', () => {
-    feedViewContainer.classList.add('hidden');
-    profileViewContainer.classList.add('hidden');
-    if (studioViewContainer) studioViewContainer.classList.remove('hidden');
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    dockBtnHome.classList.remove('active');
-    dockBtnHistory.classList.remove('active');
-    dockBtnFavorites.classList.add('active');
+    window.open('https://gemini.google.com/', '_blank');
   });
 
   dockBtnAdd.addEventListener('click', openSubmitModal);
