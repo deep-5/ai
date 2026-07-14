@@ -41,8 +41,10 @@ app.use((req, res, next) => {
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
 const publicDir = path.join(__dirname, 'public');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+if (process.env.NODE_ENV !== 'production') {
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+  if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+}
 
 // Serve static uploads and files
 app.use('/uploads', express.static(uploadsDir));
