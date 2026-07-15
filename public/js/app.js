@@ -479,9 +479,6 @@ function renderPrompts() {
 
         <!-- Mobile Action Buttons (Top-Right on image) -->
         <div class="mobile-card-actions">
-          <button class="mobile-action-btn btn-share-card">
-            <i data-lucide="arrow-up-from-line" style="width: 14px; height: 14px;"></i>
-          </button>
           <button class="mobile-action-btn btn-like-card ${likedClass}">
             <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
           </button>
@@ -759,9 +756,6 @@ function renderProfilePrompts() {
 
           <!-- Mobile Action Buttons (Top-Right on image) -->
           <div class="mobile-card-actions">
-            <button class="mobile-action-btn btn-share-card">
-              <i data-lucide="arrow-up-from-line" style="width: 14px; height: 14px;"></i>
-            </button>
             <button class="mobile-action-btn btn-like-card ${likedClass}">
               <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
             </button>
