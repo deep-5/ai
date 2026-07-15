@@ -689,8 +689,8 @@ function openDetailModal(prompt) {
       const relCard = document.createElement('div');
       relCard.className = 'prompt-card';
       relCard.innerHTML = `
-        <div class="card-image-wrapper">
-          <img src="${rel.imageUrl}" alt="${rel.title}" class="card-image" onerror="this.src='/uploads/placeholder.png'">
+        <div class="card-image-wrapper loaded">
+          <img src="${rel.imageUrl}" alt="${rel.title}" class="card-image loaded" onerror="this.src='/uploads/placeholder.png'; this.classList.add('loaded');">
         </div>
       `;
       relCard.addEventListener('click', () => {
