@@ -397,11 +397,65 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
   }
 });
 
+let promptsUpdated = false;
+async function ensurePromptsUpdated() {
+  if (promptsUpdated) return;
+  try {
+    // Update prompt-2 (Food)
+    await pool.query(`
+      UPDATE prompts 
+      SET "promptText" = 'Cozy anime cafe interior during autumn, warm sunlight filtering through large glass windows, falling yellow leaves outside, steam rising from a coffee cup and delicious fresh food on a wooden table, books, indoor plants, soft colors, Studio Ghibli style, detailed digital painting, retro anime aesthetic, highly detailed'
+      WHERE id = 'prompt-2'
+    `);
+
+    // Update prompt-3 (Horror)
+    await pool.query(`
+      UPDATE prompts 
+      SET "promptText" = 'Close up portrait of an elderly wizard, deeply lined face, glowing blue eyes containing galaxies, horror fantasy style, wearing dark velvet robes embroidered with silver constellations, mystical aura, dark fantasy, dramatic lighting, sharp focus, octane render, photorealistic, 8k'
+      WHERE id = 'prompt-3'
+    `);
+
+    // Update prompt-7 (Football, Gym, Cricket, Portrait)
+    await pool.query(`
+      UPDATE prompts 
+      SET "promptText" = 'Black and white close up portrait of a handsome athletic football and cricket sports player in a gym workout, resting chin on hand, wearing a sports jersey and a luxury wrist watch, dramatic studio lighting, sharp details, photorealistic, 8k resolution, aspect ratio 3:4'
+      WHERE id = 'prompt-7'
+    `);
+    
+    // Update prompt-8 (Couple, Saree, Bride, Wedding, Fashion)
+    await pool.query(`
+      UPDATE prompts 
+      SET "promptText" = 'High fashion editorial magazine cover featuring a beautiful Indian bride model in a red saree for a wedding couple photoshoot, emerald green satin gloves, holding hands up to her face, bold aesthetics, styled shot, photography, aspect ratio 4:3'
+      WHERE id = 'prompt-8'
+    `);
+    
+    // Update prompt-9 (Sunset, Car)
+    await pool.query(`
+      UPDATE prompts 
+      SET "promptText" = 'Cinematic night cityscape and sunset, modern luxury sports car driving down a glowing wet street in a metropolis, neon skyscrapers and lights reflecting in puddles, atmospheric fog, sharp focus, 8k, aspect ratio 16:9'
+      WHERE id = 'prompt-9'
+    `);
+    
+    // Update prompt-12 (Nature, Travel)
+    await pool.query(`
+      UPDATE prompts 
+      SET "promptText" = 'Cozy A-frame wooden cabin in a snowy mountain forest at dusk, nature travel landscape, warm yellow light glowing from the windows, soft smoke rising from chimney, winter landscape, high detail painting, digital art, aspect ratio 4:3'
+      WHERE id = 'prompt-12'
+    `);
+    
+    promptsUpdated = true;
+    console.log("Database seeded prompts updated successfully with keyword tags.");
+  } catch (err) {
+    console.error("Failed to update seeded prompts:", err.message);
+  }
+}
+
 // Prompts APIs (Public approved listings)
 app.get('/api/prompts', async (req, res) => {
   const { search, category, model } = req.query;
 
   try {
+    await ensurePromptsUpdated();
     let query = "SELECT * FROM prompts WHERE status = 'approved'";
     const params = [];
 
