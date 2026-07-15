@@ -316,6 +316,16 @@ function selectCategory(catId) {
     }
   });
 
+  // Sync new category pills
+  const newCatPills = document.querySelectorAll('[data-category]');
+  newCatPills.forEach(p => {
+    if (p.getAttribute('data-category') === catId) {
+      p.classList.add('active');
+    } else {
+      p.classList.remove('active');
+    }
+  });
+
   // 2. Sync sidebar links
   const sideLinks = sidebarCategoriesContainer.querySelectorAll('.sidebar-nested-link');
   sideLinks.forEach(link => {
@@ -370,6 +380,16 @@ async function fetchPrompts() {
         c.classList.add('active');
       } else {
         c.classList.remove('active');
+      }
+    });
+
+    // Highlight correct sorting pill
+    const sortPills = document.querySelectorAll('[data-sort]');
+    sortPills.forEach(p => {
+      if (p.getAttribute('data-sort') === state.activeSort) {
+        p.classList.add('active');
+      } else {
+        p.classList.remove('active');
       }
     });
 
@@ -1096,6 +1116,24 @@ function setupEvents() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
+
+  // Header Nav Links binding
+  const bananaNavLinks = document.querySelectorAll('.banana-nav-link');
+  bananaNavLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      bananaNavLinks.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+      
+      const text = link.textContent.trim().toLowerCase();
+      if (text === 'home' || text === 'prompts') {
+        feedViewContainer.classList.remove('hidden');
+        profileViewContainer.classList.add('hidden');
+        selectCategory('all');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  });
 
   // Floating dock actions
   dockBtnHome.addEventListener('click', () => {
