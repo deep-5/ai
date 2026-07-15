@@ -2064,3 +2064,97 @@ footer {
   opacity: 1;
   filter: blur(0);
 }
+
+/* Mobile actions and card footer */
+.mobile-card-actions {
+  display: none;
+}
+
+.mobile-card-footer {
+  display: none;
+}
+
+@media (max-width: 550px) {
+  /* Set white background for prompts card container */
+  .prompt-card {
+    background: #ffffff !important;
+    border-radius: 24px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
+    margin-bottom: 1.25rem !important;
+    overflow: hidden !important;
+    padding-bottom: 0.5rem !important;
+    border: 1px solid rgba(235, 237, 242, 0.4) !important;
+  }
+
+  .card-image-wrapper {
+    border-radius: 24px 24px 0 0 !important;
+  }
+
+  /* Hide description content on mobile */
+  .card-content {
+    display: none !important;
+  }
+
+  /* Show floating buttons at top-right of image on mobile */
+  .mobile-card-actions {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 10;
+  }
+
+  .mobile-action-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #222222;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .mobile-action-btn:active {
+    transform: scale(0.9);
+  }
+
+  /* Highlight liked heart in red */
+  .btn-like-card.liked i {
+    fill: #ef4444 !important;
+    color: #ef4444 !important;
+  }
+
+  /* Mobile card footer layout */
+  .mobile-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem 0.4rem 1.15rem;
+    background: #ffffff;
+  }
+
+  .mobile-view-details {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #8e8e93;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .mobile-likes-count {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #3a3a3c;
+    cursor: pointer;
+  }
+}

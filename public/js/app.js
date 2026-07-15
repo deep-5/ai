@@ -476,6 +476,17 @@ function renderPrompts() {
           <span class="badge badge-model">${prompt.model}</span>
           <span class="badge badge-category">${catName}</span>
         </div>
+
+        <!-- Mobile Action Buttons (Top-Right on image) -->
+        <div class="mobile-card-actions">
+          <button class="mobile-action-btn btn-share-card">
+            <i data-lucide="arrow-up-from-line" style="width: 14px; height: 14px;"></i>
+          </button>
+          <button class="mobile-action-btn btn-like-card ${likedClass}">
+            <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
+
         <div class="card-hover-overlay">
           <div class="overlay-top-row">
             <button class="overlay-btn-copy btn-copy-card">Copy</button>
@@ -505,47 +516,69 @@ function renderPrompts() {
           </div>
         </div>
       </div>
+      
+      <!-- Desktop card content -->
       <div class="card-content">
         <h3 class="card-title">${prompt.title}</h3>
         <p class="card-prompt-preview">${prompt.promptText}</p>
       </div>
+
+      <!-- Mobile Card Footer (View details + Likes) -->
+      <div class="mobile-card-footer">
+        <span class="mobile-view-details btn-view-card">View details</span>
+        <div class="mobile-likes-count btn-like-card ${likedClass}">
+          <i data-lucide="heart" style="width: 12px; height: 12px;"></i>
+          <span class="like-count-num">${likesVal}</span>
+        </div>
+      </div>
     `;
 
-    // Event bindings
-    const btnCopy = card.querySelector('.btn-copy-card');
-    const btnView = card.querySelector('.btn-view-card');
-    const btnLike = card.querySelector('.btn-like-card');
-    const btnShare = card.querySelector('.btn-share-card');
+    // Event bindings (using querySelectorAll to bind to both mobile & desktop buttons)
+    const btnCopies = card.querySelectorAll('.btn-copy-card');
+    const btnViews = card.querySelectorAll('.btn-view-card');
+    const btnLikes = card.querySelectorAll('.btn-like-card');
+    const btnShares = card.querySelectorAll('.btn-share-card');
 
-    btnCopy.addEventListener('click', (e) => {
-      e.stopPropagation();
-      navigator.clipboard.writeText(prompt.promptText);
-      showToast('Prompt copied to clipboard!');
+    btnCopies.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(prompt.promptText);
+        showToast('Prompt copied to clipboard!');
+      });
     });
 
-    btnView.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openDetailModal(prompt);
+    btnViews.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openDetailModal(prompt);
+      });
     });
 
-    btnLike.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const wasLiked = localStorage.getItem('liked_' + prompt.id) === 'true';
-      if (wasLiked) {
-        localStorage.setItem('liked_' + prompt.id, 'false');
-        btnLike.classList.remove('liked');
-      } else {
-        localStorage.setItem('liked_' + prompt.id, 'true');
-        btnLike.classList.add('liked');
-      }
-      btnLike.querySelector('.like-count-num').textContent = getLikesCount(prompt.id);
+    btnLikes.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasLiked = localStorage.getItem('liked_' + prompt.id) === 'true';
+        if (wasLiked) {
+          localStorage.setItem('liked_' + prompt.id, 'false');
+          btnLikes.forEach(b => b.classList.remove('liked'));
+        } else {
+          localStorage.setItem('liked_' + prompt.id, 'true');
+          btnLikes.forEach(b => b.classList.add('liked'));
+        }
+        btnLikes.forEach(b => {
+          const num = b.querySelector('.like-count-num');
+          if (num) num.textContent = getLikesCount(prompt.id);
+        });
+      });
     });
 
-    btnShare.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const shareUrl = `${window.location.origin}?id=${prompt.id}`;
-      navigator.clipboard.writeText(shareUrl);
-      showToast('Share link copied to clipboard!');
+    btnShares.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const shareUrl = `${window.location.origin}?id=${prompt.id}`;
+        navigator.clipboard.writeText(shareUrl);
+        showToast('Share link copied to clipboard!');
+      });
     });
 
     card.addEventListener('click', () => {
@@ -723,6 +756,17 @@ function renderProfilePrompts() {
             <span class="badge badge-model">${prompt.model}</span>
             <span class="badge badge-category">${catName}</span>
           </div>
+
+          <!-- Mobile Action Buttons (Top-Right on image) -->
+          <div class="mobile-card-actions">
+            <button class="mobile-action-btn btn-share-card">
+              <i data-lucide="arrow-up-from-line" style="width: 14px; height: 14px;"></i>
+            </button>
+            <button class="mobile-action-btn btn-like-card ${likedClass}">
+              <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+
           <div class="card-hover-overlay">
             <div class="overlay-top-row">
               <button class="overlay-btn-copy btn-copy-card">Copy</button>
@@ -752,47 +796,70 @@ function renderProfilePrompts() {
             </div>
           </div>
         </div>
+        
+        <!-- Desktop card content -->
         <div class="card-content">
           <h3 class="card-title">${prompt.title}</h3>
           <p class="card-prompt-preview">${prompt.promptText}</p>
         </div>
+
+        <!-- Mobile Card Footer (View details + Likes) -->
+        <div class="mobile-card-footer">
+          <span class="mobile-view-details btn-view-card">View details</span>
+          <div class="mobile-likes-count btn-like-card ${likedClass}">
+            <i data-lucide="heart" style="width: 12px; height: 12px;"></i>
+            <span class="like-count-num">${likesVal}</span>
+          </div>
+        </div>
       `;
       
-      const btnCopy = card.querySelector('.btn-copy-card');
-      const btnView = card.querySelector('.btn-view-card');
-      const btnLike = card.querySelector('.btn-like-card');
-      const btnShare = card.querySelector('.btn-share-card');
+      // Event bindings (using querySelectorAll to bind to both mobile & desktop buttons)
+      const btnCopies = card.querySelectorAll('.btn-copy-card');
+      const btnViews = card.querySelectorAll('.btn-view-card');
+      const btnLikes = card.querySelectorAll('.btn-like-card');
+      const btnShares = card.querySelectorAll('.btn-share-card');
 
-      btnCopy.addEventListener('click', (e) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(prompt.promptText);
-        showToast('Prompt copied to clipboard!');
+      btnCopies.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          navigator.clipboard.writeText(prompt.promptText);
+          showToast('Prompt copied to clipboard!');
+        });
       });
 
-      btnView.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openDetailModal(prompt);
+      btnViews.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openDetailModal(prompt);
+        });
       });
 
-      btnLike.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const wasLiked = localStorage.getItem('liked_' + prompt.id) === 'true';
-        if (wasLiked) {
-          localStorage.setItem('liked_' + prompt.id, 'false');
-          btnLike.classList.remove('liked');
-        } else {
-          localStorage.setItem('liked_' + prompt.id, 'true');
-          btnLike.classList.add('liked');
-        }
-        btnLike.querySelector('.like-count-num').textContent = getLikesCount(prompt.id);
-        renderPrompts();
+      btnLikes.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const wasLiked = localStorage.getItem('liked_' + prompt.id) === 'true';
+          if (wasLiked) {
+            localStorage.setItem('liked_' + prompt.id, 'false');
+            btnLikes.forEach(b => b.classList.remove('liked'));
+          } else {
+            localStorage.setItem('liked_' + prompt.id, 'true');
+            btnLikes.forEach(b => b.classList.add('liked'));
+          }
+          btnLikes.forEach(b => {
+            const num = b.querySelector('.like-count-num');
+            if (num) num.textContent = getLikesCount(prompt.id);
+          });
+          renderPrompts();
+        });
       });
 
-      btnShare.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const shareUrl = `${window.location.origin}?id=${prompt.id}`;
-        navigator.clipboard.writeText(shareUrl);
-        showToast('Share link copied to clipboard!');
+      btnShares.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const shareUrl = `${window.location.origin}?id=${prompt.id}`;
+          navigator.clipboard.writeText(shareUrl);
+          showToast('Share link copied to clipboard!');
+        });
       });
 
       card.addEventListener('click', () => {
