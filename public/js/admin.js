@@ -590,6 +590,53 @@ fieldImageFile.addEventListener('change', async (e) => {
   }
 });
 
+// Promotion Image Upload Handler
+const btnUploadPromo = document.getElementById('btn-upload-promo');
+const uploadPromoFile = document.getElementById('upload-promo-file');
+
+if (btnUploadPromo && uploadPromoFile) {
+  btnUploadPromo.addEventListener('click', () => {
+    uploadPromoFile.click();
+  });
+
+  uploadPromoFile.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const originalText = btnUploadPromo.innerHTML;
+    try {
+      btnUploadPromo.disabled = true;
+      btnUploadPromo.innerHTML = 'Uploading...';
+      
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.token}`
+        },
+        body: formData
+      });
+      
+      const data = await res.json();
+      btnUploadPromo.disabled = false;
+      btnUploadPromo.innerHTML = originalText;
+
+      if (res.ok) {
+        setPromoImageUrl.value = data.imageUrl;
+        showToast('Promotion image uploaded successfully');
+      } else {
+        showToast(data.error || 'Upload failed', true);
+      }
+    } catch (err) {
+      btnUploadPromo.disabled = false;
+      btnUploadPromo.innerHTML = originalText;
+      showToast('Failed to upload promotion image', true);
+    }
+  });
+}
+
 // Image preview handler
 fieldImageUrl.addEventListener('input', (e) => {
   const url = e.target.value.trim();

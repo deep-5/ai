@@ -246,7 +246,13 @@
                   </div>
                   <div class="form-group">
                     <label for="set-promo-image-url">Promo Image URL</label>
-                    <input type="text" id="set-promo-image-url" class="form-control" placeholder="e.g. /uploads/violet_flowers.png">
+                    <div style="display: flex; gap: 0.5rem; width: 100%;">
+                      <input type="text" id="set-promo-image-url" class="form-control" placeholder="e.g. /uploads/violet_flowers.png" style="margin-bottom: 0;">
+                      <button type="button" id="btn-upload-promo" class="btn btn-secondary" style="padding: 0 1rem; height: 42px; display: flex; align-items: center; justify-content: center; gap: 0.25rem; font-weight: 500; font-size: 0.85rem; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; cursor: pointer; flex-shrink: 0;">
+                        <i data-lucide="upload" style="width: 14px; height: 14px;"></i> Upload
+                      </button>
+                    </div>
+                    <input type="file" id="upload-promo-file" accept="image/*" style="display: none;">
                   </div>
                   <div class="form-group full-width">
                     <label for="set-promo-text">Promo Description</label>
