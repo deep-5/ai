@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Prompt AI — Curated AI Prompts Workspace</title>
-  <link rel="stylesheet" href="/css/style_v5.css">
+  <link rel="stylesheet" href="/css/style_v6.css">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -14,31 +14,34 @@
   <div class="app-layout">
     
     <!-- Pinterest Top Header Bar -->
-    <header class="pinterest-header">
-      <div class="pinterest-header-left">
-        <a href="/" class="pinterest-logo" id="nav-home">
-          <span class="pinterest-logo-icon">P</span>
+    <!-- Floating Header Bar -->
+    <header class="banana-header">
+      <div class="banana-header-left">
+        <a href="/" class="banana-logo" id="nav-home">
+          <span class="banana-logo-emoji">🍌</span>
+          <span class="banana-logo-text">Banana Prompt AI</span>
         </a>
-        <button class="pinterest-feed-btn">
-          Home feed
-          <i data-lucide="chevron-down" style="width: 14px; height: 14px; color: var(--text-primary);"></i>
-        </button>
       </div>
       
-      <!-- Central Search Box -->
-      <div class="pinterest-search-box">
-        <i data-lucide="search" class="pinterest-search-icon"></i>
-        <input type="text" id="search-input" class="pinterest-search-input" placeholder="Search for ideas, prompts, designs...">
-      </div>
+      <nav class="banana-nav-links">
+        <a href="/" class="banana-nav-link">Home</a>
+        <a href="/" class="banana-nav-link active">Prompts</a>
+        <a href="/studio" class="banana-nav-link">Studio</a>
+        <a href="/generator" class="banana-nav-link">Generator</a>
+        <a href="/bg-remover" class="banana-nav-link">BG Remover</a>
+      </nav>
       
-      <!-- Right Action Icons -->
-      <div class="pinterest-header-right">
-        <button class="pinterest-icon-btn" id="btn-open-submit-modal" title="Submit New Prompt">
-          <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
+      <div class="banana-header-right">
+        <button class="banana-icon-btn" id="btn-favorites" title="Favorites">
+          <i data-lucide="heart" style="width: 20px; height: 20px;"></i>
         </button>
-        <div class="pinterest-profile-avatar" title="My Profile">
-          <img src="https://ui-avatars.com/api/?background=e60023&color=ffffff&bold=true&name=Deep" alt="User Profile" class="avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); object-fit: cover;">
-        </div>
+        <button class="banana-icon-btn" id="btn-theme-toggle" title="Toggle Dark Mode">
+          <i data-lucide="moon" style="width: 20px; height: 20px;"></i>
+        </button>
+        <button class="banana-login-btn" id="btn-login">
+          <i data-lucide="log-in" style="width: 16px; height: 16px;"></i>
+          <span>Login</span>
+        </button>
       </div>
     </header>
 
@@ -61,20 +64,71 @@
       
       <!-- Main Feed view -->
       <div id="feed-view-container">
-        <!-- Top Filters & Sorting Row -->
-        <div class="pinterest-filters-row" style="display: none;">
-          <!-- Categories Filter pills row -->
-          <div class="pills-container" id="pills-filter-container">
-            <button class="pill-chip active" data-category="all">All</button>
-            <!-- Dynamic categories loaded here -->
+        <!-- AI Prompt Library Hero Header -->
+        <div class="library-hero">
+          <h1 class="library-title">AI Prompt <span class="highlight">Library</span> <button class="btn-submit-prompt" id="btn-open-submit-modal"><i data-lucide="upload" style="width: 14px; height: 14px;"></i> Submit</button></h1>
+          <p class="library-subtitle">Browse our curated collection of AI prompts for Midjourney, DALL-E, Flux & more. Click to copy, save favorites, or generate in Studio.</p>
+        </div>
+
+        <!-- Banana control panel layout -->
+        <div class="banana-control-panel">
+          
+          <!-- Sorting pills -->
+          <div class="control-row-center">
+            <div class="pill-group">
+              <button class="pill-btn" id="sort-random" data-sort="random">
+                <i data-lucide="shuffle" style="width: 14px; height: 14px;"></i>
+                Random
+              </button>
+              <button class="pill-btn active" id="sort-newest" data-sort="newest">
+                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                Newest
+              </button>
+              <button class="pill-btn" id="sort-popular" data-sort="popular">
+                <i data-lucide="trending-up" style="width: 14px; height: 14px;"></i>
+                Most Popular
+              </button>
+            </div>
           </div>
 
-          <!-- Sorting tabs -->
-          <div class="sorting-tabs">
-            <div class="sort-tab active" data-sort="featured">Featured</div>
-            <div class="sort-tab" data-sort="newest">Newest</div>
-            <div class="sort-tab" data-sort="popular">Popular</div>
+          <!-- Filtering pills -->
+          <div class="control-row-center" style="margin-top: 1rem;">
+            <div class="pill-group">
+              <button class="pill-btn active" id="filter-type-all" data-type="all">All</button>
+              <button class="pill-btn" id="filter-type-image" data-type="image">
+                <i data-lucide="image" style="width: 14px; height: 14px;"></i>
+                Image
+              </button>
+              <button class="pill-btn" id="filter-type-video" data-type="video">
+                <i data-lucide="video" style="width: 14px; height: 14px;"></i>
+                Video
+              </button>
+              <button class="pill-btn" id="filter-type-premium" data-type="premium">
+                <i data-lucide="crown" style="width: 14px; height: 14px;"></i>
+                Premium
+              </button>
+              
+              <div class="pill-separator"></div>
+              
+              <button class="pill-btn active" id="filter-cat-all" data-category="all">All</button>
+              <button class="pill-btn" id="filter-cat-girl" data-category="girl">👩 Girl</button>
+              <button class="pill-btn" id="filter-cat-boy" data-category="boy">👦 Boy</button>
+            </div>
           </div>
+
+          <!-- Search input and filters toggle -->
+          <div class="search-filters-row" style="margin-top: 1.5rem;">
+            <div class="search-box-wrapper">
+              <i data-lucide="search" class="search-box-icon"></i>
+              <input type="text" id="search-input" class="search-box-input" placeholder="Search prompts or keywords (e.g. football, saree, couple)...">
+            </div>
+            <button class="btn-toggle-filters" id="btn-toggle-filters">
+              <i data-lucide="sliders-horizontal" style="width: 15px; height: 15px;"></i>
+              Filters
+              <span class="indicator-dot"></span>
+            </button>
+          </div>
+
         </div>
 
         <!-- Popular Keywords Row -->
@@ -367,6 +421,6 @@
     <span class="toast-message">Copied to clipboard!</span>
   </div>
 
-  <script src="/js/app_v6.js"></script>
+  <script src="/js/app_v7.js"></script>
 </body>
 </html>

@@ -356,6 +356,8 @@ async function fetchPrompts() {
     } else if (state.activeSort === 'popular') {
       // Mock popularity sorting using CFG scale + steps length
       promptsList.sort((a, b) => (parseFloat(b.cfgScale || 0) + parseInt(b.steps || 0)) - (parseFloat(a.cfgScale || 0) + parseInt(a.steps || 0)));
+    } else if (state.activeSort === 'random') {
+      promptsList.sort(() => Math.random() - 0.5);
     } else {
       // Default featured: alphabetical by category, then newer
       promptsList.sort((a, b) => a.category.localeCompare(b.category) || new Date(b.createdAt) - new Date(a.createdAt));
@@ -1031,15 +1033,69 @@ function setupEvents() {
     }
   });
 
-  // Sorting tabs bindings
-  sortingTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      sortingTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      state.activeSort = tab.getAttribute('data-sort');
+  // Sorting pill bindings
+  const sortPills = document.querySelectorAll('[data-sort]');
+  sortPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const parent = pill.closest('.pill-group');
+      if (parent) parent.querySelectorAll('[data-sort]').forEach(t => t.classList.remove('active'));
+      pill.classList.add('active');
+      state.activeSort = pill.getAttribute('data-sort');
       fetchPrompts();
     });
   });
+
+  // Category pill bindings
+  const catPills = document.querySelectorAll('[data-category]');
+  catPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const parent = pill.closest('.pill-group');
+      if (parent) parent.querySelectorAll('[data-category]').forEach(t => t.classList.remove('active'));
+      pill.classList.add('active');
+      state.activeCategory = pill.getAttribute('data-category');
+      fetchPrompts();
+    });
+  });
+
+  // Type pill bindings
+  const typePills = document.querySelectorAll('[data-type]');
+  typePills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const parent = pill.closest('.pill-group');
+      if (parent) parent.querySelectorAll('[data-type]').forEach(t => t.classList.remove('active'));
+      pill.classList.add('active');
+      
+      const type = pill.getAttribute('data-type');
+      if (type === 'video' || type === 'premium') {
+        state.prompts = [];
+        renderPrompts();
+      } else {
+        fetchPrompts();
+      }
+    });
+  });
+
+  // Favorites Header Icon binding
+  const btnFavoritesHeader = document.getElementById('btn-favorites');
+  if (btnFavoritesHeader) {
+    btnFavoritesHeader.addEventListener('click', () => {
+      feedViewContainer.classList.add('hidden');
+      profileViewContainer.classList.remove('hidden');
+      profileActiveTab = 'liked';
+      if (profileTabLiked) {
+        profileTabLiked.classList.add('active');
+        profileTabLiked.style.color = 'var(--text-primary)';
+        profileTabLiked.style.borderBottomColor = '#111111';
+      }
+      if (profileTabCreated) {
+        profileTabCreated.classList.remove('active');
+        profileTabCreated.style.color = 'var(--text-secondary)';
+        profileTabCreated.style.borderBottomColor = 'transparent';
+      }
+      renderProfilePrompts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 
   // Floating dock actions
   dockBtnHome.addEventListener('click', () => {
