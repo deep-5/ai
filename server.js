@@ -401,50 +401,99 @@ let promptsUpdated = false;
 async function ensurePromptsUpdated() {
   if (promptsUpdated) return;
   try {
-    // Update prompt-2 (Food)
+    // Ensure 'other' category exists in the categories table
     await pool.query(`
-      UPDATE prompts 
-      SET "promptText" = 'Cozy anime cafe interior during autumn, warm sunlight filtering through large glass windows, falling yellow leaves outside, steam rising from a coffee cup and delicious fresh food on a wooden table, books, indoor plants, soft colors, Studio Ghibli style, detailed digital painting, retro anime aesthetic, highly detailed'
-      WHERE id = 'prompt-2'
+      INSERT INTO categories (id, name)
+      VALUES ('other', 'Other')
+      ON CONFLICT (id) DO NOTHING;
     `);
 
-    // Update prompt-3 (Horror)
+    // Update prompt-1 (Girl)
     await pool.query(`
       UPDATE prompts 
-      SET "promptText" = 'Close up portrait of an elderly wizard, deeply lined face, glowing blue eyes containing galaxies, horror fantasy style, wearing dark velvet robes embroidered with silver constellations, mystical aura, dark fantasy, dramatic lighting, sharp focus, octane render, photorealistic, 8k'
-      WHERE id = 'prompt-3'
+      SET category = 'girl'
+      WHERE id = 'prompt-1';
     `);
 
-    // Update prompt-7 (Football, Gym, Cricket, Portrait)
+    // Update prompt-2 (Other)
     await pool.query(`
       UPDATE prompts 
-      SET "promptText" = 'Black and white close up portrait of a handsome athletic football and cricket sports player in a gym workout, resting chin on hand, wearing a sports jersey and a luxury wrist watch, dramatic studio lighting, sharp details, photorealistic, 8k resolution, aspect ratio 3:4'
-      WHERE id = 'prompt-7'
+      SET category = 'other', "promptText" = 'Cozy anime cafe interior during autumn, warm sunlight filtering through large glass windows, falling yellow leaves outside, steam rising from a coffee cup and delicious fresh food on a wooden table, books, indoor plants, soft colors, Studio Ghibli style, detailed digital painting, retro anime aesthetic, highly detailed'
+      WHERE id = 'prompt-2';
+    `);
+
+    // Update prompt-3 (Boy)
+    await pool.query(`
+      UPDATE prompts 
+      SET category = 'boy', "promptText" = 'Close up portrait of an elderly wizard, deeply lined face, glowing blue eyes containing galaxies, horror fantasy style, wearing dark velvet robes embroidered with silver constellations, mystical aura, dark fantasy, dramatic lighting, sharp focus, octane render, photorealistic, 8k'
+      WHERE id = 'prompt-3';
+    `);
+
+    // Update prompt-4 (Other)
+    await pool.query(`
+      UPDATE prompts 
+      SET category = 'other'
+      WHERE id = 'prompt-4';
+    `);
+
+    // Update prompt-5 (Other)
+    await pool.query(`
+      UPDATE prompts 
+      SET category = 'other'
+      WHERE id = 'prompt-5';
+    `);
+
+    // Update prompt-6 (Other)
+    await pool.query(`
+      UPDATE prompts 
+      SET category = 'other'
+      WHERE id = 'prompt-6';
+    `);
+
+    // Update prompt-7 (Boy)
+    await pool.query(`
+      UPDATE prompts 
+      SET category = 'boy', "promptText" = 'Black and white close up portrait of a handsome athletic football and cricket sports player in a gym workout, resting chin on hand, wearing a sports jersey and a luxury wrist watch, dramatic studio lighting, sharp details, photorealistic, 8k resolution, aspect ratio 3:4'
+      WHERE id = 'prompt-7';
     `);
     
-    // Update prompt-8 (Couple, Saree, Bride, Wedding, Fashion)
+    // Update prompt-8 (Girl)
     await pool.query(`
       UPDATE prompts 
-      SET "promptText" = 'High fashion editorial magazine cover featuring a beautiful Indian bride model in a red saree for a wedding couple photoshoot, emerald green satin gloves, holding hands up to her face, bold aesthetics, styled shot, photography, aspect ratio 4:3'
-      WHERE id = 'prompt-8'
+      SET category = 'girl', "promptText" = 'High fashion editorial magazine cover featuring a beautiful Indian bride model in a red saree for a wedding couple photoshoot, emerald green satin gloves, holding hands up to her face, bold aesthetics, styled shot, photography, aspect ratio 4:3'
+      WHERE id = 'prompt-8';
     `);
     
-    // Update prompt-9 (Sunset, Car)
+    // Update prompt-9 (Other)
     await pool.query(`
       UPDATE prompts 
-      SET "promptText" = 'Cinematic night cityscape and sunset, modern luxury sports car driving down a glowing wet street in a metropolis, neon skyscrapers and lights reflecting in puddles, atmospheric fog, sharp focus, 8k, aspect ratio 16:9'
-      WHERE id = 'prompt-9'
+      SET category = 'other', "promptText" = 'Cinematic night cityscape and sunset, modern luxury sports car driving down a glowing wet street in a metropolis, neon skyscrapers and lights reflecting in puddles, atmospheric fog, sharp focus, 8k, aspect ratio 16:9'
+      WHERE id = 'prompt-9';
+    `);
+
+    // Update prompt-10 (Other)
+    await pool.query(`
+      UPDATE prompts 
+      SET category = 'other'
+      WHERE id = 'prompt-10';
+    `);
+
+    // Update prompt-11 (Girl)
+    await pool.query(`
+      UPDATE prompts 
+      SET category = 'girl'
+      WHERE id = 'prompt-11';
     `);
     
-    // Update prompt-12 (Nature, Travel)
+    // Update prompt-12 (Other)
     await pool.query(`
       UPDATE prompts 
-      SET "promptText" = 'Cozy A-frame wooden cabin in a snowy mountain forest at dusk, nature travel landscape, warm yellow light glowing from the windows, soft smoke rising from chimney, winter landscape, high detail painting, digital art, aspect ratio 4:3'
-      WHERE id = 'prompt-12'
+      SET category = 'other', "promptText" = 'Cozy A-frame wooden cabin in a snowy mountain forest at dusk, nature travel landscape, warm yellow light glowing from the windows, soft smoke rising from chimney, winter landscape, high detail painting, digital art, aspect ratio 4:3'
+      WHERE id = 'prompt-12';
     `);
     
     promptsUpdated = true;
-    console.log("Database seeded prompts updated successfully with keyword tags.");
+    console.log("Database seeded prompts updated successfully with correct categories and keyword tags.");
   } catch (err) {
     console.error("Failed to update seeded prompts:", err.message);
   }
@@ -470,18 +519,18 @@ app.get('/api/prompts', async (req, res) => {
     }
 
     if (search && search.trim() !== '') {
-      const keyword = `%${search.toLowerCase()}%`;
       const isGirlCat = search.toLowerCase() === 'girl';
       const isBoyCat = search.toLowerCase() === 'boy';
       
       if (isGirlCat) {
-        query += " AND (category = 'girl' OR LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + ")";
+        query += " AND category = 'girl'";
       } else if (isBoyCat) {
-        query += " AND (category = 'boy' OR LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + ")";
+        query += " AND category = 'boy'";
       } else {
+        const keyword = `%${search.toLowerCase()}%`;
         query += " AND (LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + " OR LOWER(\"negativePrompt\") LIKE $" + (params.length + 1) + ")";
+        params.push(keyword);
       }
-      params.push(keyword);
     }
 
     query += " ORDER BY \"createdAt\" DESC";
