@@ -641,8 +641,8 @@ button {
 
 @media (max-width: 550px) {
   .grid-layout {
-    column-count: 2;
-    column-gap: 0.5rem;
+    column-count: 1;
+    column-gap: 0;
   }
   .prompt-card {
     margin-bottom: 0.5rem;
