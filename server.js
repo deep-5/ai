@@ -417,7 +417,16 @@ app.get('/api/prompts', async (req, res) => {
 
     if (search && search.trim() !== '') {
       const keyword = `%${search.toLowerCase()}%`;
-      query += " AND (LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + " OR LOWER(\"negativePrompt\") LIKE $" + (params.length + 1) + ")";
+      const isGirlCat = search.toLowerCase() === 'girl';
+      const isBoyCat = search.toLowerCase() === 'boy';
+      
+      if (isGirlCat) {
+        query += " AND (category = 'girl' OR LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + ")";
+      } else if (isBoyCat) {
+        query += " AND (category = 'boy' OR LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + ")";
+      } else {
+        query += " AND (LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + " OR LOWER(\"negativePrompt\") LIKE $" + (params.length + 1) + ")";
+      }
       params.push(keyword);
     }
 

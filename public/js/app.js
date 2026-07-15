@@ -17,8 +17,8 @@ let isGenerating = false;
 
 // Popular Keywords List
 const POPULAR_KEYWORDS = [
-  'Couple', 'Football', 'Cricket', 'Saree', 'Bride', 'Sunset', 'Anime', 
-  'Car', 'Wedding', 'Nature', 'Portrait', 'Fantasy', 'Horror', 'Gym', 
+  'Girl', 'Boy', 'Couple', 'Football', 'Cricket', 'Saree', 'Bride', 'Sunset', 
+  'Anime', 'Car', 'Wedding', 'Nature', 'Portrait', 'Fantasy', 'Horror', 'Gym', 
   'Fashion', 'Food', 'Travel', 'Architecture'
 ];
 
