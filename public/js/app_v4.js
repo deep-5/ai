@@ -180,10 +180,8 @@ async function initApp() {
         }
       };
       
-      // Check if user dismissed it in this session
-      if (sessionStorage.getItem('promo-dismissed') !== 'true') {
-        promoAnnouncementCard.classList.remove('hidden');
-      }
+      // Always show on page load if promoVisible is true
+      promoAnnouncementCard.classList.remove('hidden');
     } else if (promoAnnouncementCard) {
       promoAnnouncementCard.classList.add('hidden');
     }
@@ -191,7 +189,6 @@ async function initApp() {
     if (btnClosePromo && promoAnnouncementCard) {
       btnClosePromo.onclick = () => {
         promoAnnouncementCard.classList.add('hidden');
-        sessionStorage.setItem('promo-dismissed', 'true');
       };
     }
 
