@@ -47,9 +47,22 @@ if (process.env.NODE_ENV !== 'production') {
   if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
 }
 
-// Serve static uploads and files
-app.use('/uploads', express.static(uploadsDir));
-app.use(express.static(publicDir));
+// Serve static uploads and files with aggressive caching (1 year max-age, immutable)
+app.use('/uploads', express.static(uploadsDir, {
+  maxAge: '31536000000', // 1 year in milliseconds
+  immutable: true
+}));
+
+app.use(express.static(publicDir, {
+  maxAge: '31536000000', // 1 year in milliseconds
+  immutable: true,
+  setHeaders: (res, path) => {
+    // Prevent long-term caching of HTML files so updates are immediate
+    if (path.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    }
+  }
+}));
 
 // Multer Memory Storage Configuration
 const storage = multer.memoryStorage();

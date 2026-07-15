@@ -2010,3 +2010,45 @@ footer {
   background: #111111;
   color: #ffffff;
 }
+
+/* Skeleton Loading & Lazy Image Animations */
+.card-image-wrapper {
+  position: relative;
+  background: #f0f0f2;
+  overflow: hidden;
+}
+
+/* Shimmer effect for skeleton */
+.card-image-wrapper::before {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* When loaded, remove shimmer */
+.card-image-wrapper.loaded::before {
+  opacity: 0;
+}
+
+.card-image {
+  opacity: 0;
+  filter: blur(10px);
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), filter 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+.card-image.loaded {
+  opacity: 1;
+  filter: blur(0);
+}

@@ -390,6 +390,53 @@ function getLikesCount(promptId) {
   return isLiked ? baseLikes + 1 : baseLikes;
 }
 
+// Lazy load images dynamically using Intersection Observer
+function initLazyLoading() {
+  const lazyImages = document.querySelectorAll('.lazy-image');
+  
+  if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const image = entry.target;
+          image.src = image.getAttribute('data-src');
+          
+          image.onload = () => {
+            image.classList.add('loaded');
+            const wrapper = image.closest('.card-image-wrapper');
+            if (wrapper) wrapper.classList.add('loaded');
+          };
+          
+          // Fallback if image was already cached
+          if (image.complete) {
+            image.classList.add('loaded');
+            const wrapper = image.closest('.card-image-wrapper');
+            if (wrapper) wrapper.classList.add('loaded');
+          }
+
+          image.classList.remove('lazy-image');
+          observer.unobserve(image);
+        }
+      });
+    }, {
+      rootMargin: '120px 0px',
+      threshold: 0.01
+    });
+
+    lazyImages.forEach(image => {
+      imageObserver.observe(image);
+    });
+  } else {
+    // Immediate fallback
+    lazyImages.forEach(image => {
+      image.src = image.getAttribute('data-src');
+      image.classList.add('loaded');
+      const wrapper = image.closest('.card-image-wrapper');
+      if (wrapper) wrapper.classList.add('loaded');
+    });
+  }
+}
+
 // Render Prompts Grid
 function renderPrompts() {
   const cards = promptsGrid.querySelectorAll('.prompt-card');
@@ -424,7 +471,7 @@ function renderPrompts() {
     card.className = 'prompt-card';
     card.innerHTML = `
       <div class="card-image-wrapper">
-        <img src="${prompt.imageUrl}" alt="${prompt.title}" class="card-image" loading="lazy" onerror="this.src='/uploads/placeholder.png'">
+        <img data-src="${prompt.imageUrl}" alt="${prompt.title}" class="card-image lazy-image" onerror="this.src='/uploads/placeholder.png'; this.classList.add('loaded'); const w = this.closest('.card-image-wrapper'); if(w) w.classList.add('loaded');">
         <div class="card-badges">
           <span class="badge badge-model">${prompt.model}</span>
           <span class="badge badge-category">${catName}</span>
@@ -509,6 +556,7 @@ function renderPrompts() {
   });
 
   lucide.createIcons();
+  initLazyLoading();
 }
 
 // Modal Detail View
@@ -670,7 +718,7 @@ function renderProfilePrompts() {
       card.className = 'prompt-card';
       card.innerHTML = `
         <div class="card-image-wrapper">
-          <img src="${prompt.imageUrl}" alt="${prompt.title}" class="card-image" loading="lazy" onerror="this.src='/uploads/placeholder.png'">
+          <img data-src="${prompt.imageUrl}" alt="${prompt.title}" class="card-image lazy-image" onerror="this.src='/uploads/placeholder.png'; this.classList.add('loaded'); const w = this.closest('.card-image-wrapper'); if(w) w.classList.add('loaded');">
           <div class="card-badges">
             <span class="badge badge-model">${prompt.model}</span>
             <span class="badge badge-category">${catName}</span>
@@ -755,6 +803,7 @@ function renderProfilePrompts() {
     });
   }
   lucide.createIcons();
+  initLazyLoading();
 }
 
 function closeDetailModal() {
