@@ -218,7 +218,9 @@ function renderCategoriesUI() {
   sidebarCategoriesContainer.innerHTML = '<button class="sidebar-nested-link active" data-category="all">All</button>';
   
   // 2. Top bar pills
-  pillsFilterContainer.innerHTML = '<button class="pill-chip active" data-category="all">All</button>';
+  if (pillsFilterContainer) {
+    pillsFilterContainer.innerHTML = '<button class="pill-chip active" data-category="all">All</button>';
+  }
   
   // 3. Populate submit select
   submitFieldCategory.innerHTML = '';
@@ -232,11 +234,13 @@ function renderCategoriesUI() {
     sidebarCategoriesContainer.appendChild(sideLink);
 
     // Top pills
-    const pill = document.createElement('button');
-    pill.className = 'pill-chip';
-    pill.textContent = cat.name;
-    pill.setAttribute('data-category', cat.id);
-    pillsFilterContainer.appendChild(pill);
+    if (pillsFilterContainer) {
+      const pill = document.createElement('button');
+      pill.className = 'pill-chip';
+      pill.textContent = cat.name;
+      pill.setAttribute('data-category', cat.id);
+      pillsFilterContainer.appendChild(pill);
+    }
 
     // Submit options
     const option = document.createElement('option');
@@ -256,13 +260,15 @@ function renderCategoriesUI() {
   });
 
   // Bind clicks for Top Pills
-  const pills = pillsFilterContainer.querySelectorAll('.pill-chip');
-  pills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      const catId = pill.getAttribute('data-category');
-      selectCategory(catId);
+  if (pillsFilterContainer) {
+    const pills = pillsFilterContainer.querySelectorAll('.pill-chip');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        const catId = pill.getAttribute('data-category');
+        selectCategory(catId);
+      });
     });
-  });
+  }
 }
 
 // Render Popular Keywords UI
@@ -307,14 +313,16 @@ function selectCategory(catId) {
   if (searchInput) searchInput.value = '';
   
   // 1. Sync top pills
-  const pills = pillsFilterContainer.querySelectorAll('.pill-chip');
-  pills.forEach(p => {
-    if (p.getAttribute('data-category') === catId) {
-      p.classList.add('active');
-    } else {
-      p.classList.remove('active');
-    }
-  });
+  if (pillsFilterContainer) {
+    const pills = pillsFilterContainer.querySelectorAll('.pill-chip');
+    pills.forEach(p => {
+      if (p.getAttribute('data-category') === catId) {
+        p.classList.add('active');
+      } else {
+        p.classList.remove('active');
+      }
+    });
+  }
 
   // Sync new category pills
   const newCatPills = document.querySelectorAll('[data-category]');
