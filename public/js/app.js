@@ -338,12 +338,12 @@ function selectCategory(catId) {
 
   // Reset Home active status if category chosen, or set active if 'all' chosen
   if (catId === 'all') {
-    navHome.classList.add('active');
+    if (navHome) navHome.classList.add('active');
     dockBtnHome.classList.add('active');
     dockBtnHistory.classList.remove('active');
     if (dockBtnFavorites) dockBtnFavorites.classList.remove('active');
   } else {
-    navHome.classList.remove('active');
+    if (navHome) navHome.classList.remove('active');
     dockBtnHome.classList.remove('active');
   }
 
@@ -1270,12 +1270,14 @@ function setupEvents() {
   });
 
   // Navigation menu clicks
-  navHome.addEventListener('click', (e) => {
-    e.preventDefault();
-    profileViewContainer.classList.add('hidden');
-    feedViewContainer.classList.remove('hidden');
-    selectCategory('all');
-  });
+  if (navHome) {
+    navHome.addEventListener('click', (e) => {
+      e.preventDefault();
+      profileViewContainer.classList.add('hidden');
+      feedViewContainer.classList.remove('hidden');
+      selectCategory('all');
+    });
+  }
 
   const feedBtn = document.querySelector('.pinterest-feed-btn');
   if (feedBtn) {
