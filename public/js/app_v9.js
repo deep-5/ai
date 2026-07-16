@@ -499,12 +499,7 @@ function renderPrompts() {
           <span class="badge badge-category">${catName}</span>
         </div>
 
-        <!-- Mobile Action Buttons (Top-Right on image) -->
-        <div class="mobile-card-actions">
-          <button class="mobile-action-btn btn-like-card ${likedClass}">
-            <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
-          </button>
-        </div>
+        
 
         <div class="card-hover-overlay">
           <div class="overlay-top-row">
@@ -776,12 +771,7 @@ function renderProfilePrompts() {
             <span class="badge badge-category">${catName}</span>
           </div>
 
-          <!-- Mobile Action Buttons (Top-Right on image) -->
-          <div class="mobile-card-actions">
-            <button class="mobile-action-btn btn-like-card ${likedClass}">
-              <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
-            </button>
-          </div>
+          
 
           <div class="card-hover-overlay">
             <div class="overlay-top-row">
@@ -1069,29 +1059,9 @@ function setupEvents() {
   const catPills = document.querySelectorAll('[data-category]');
   catPills.forEach(pill => {
     pill.addEventListener('click', () => {
-      const parent = pill.closest('.pill-group');
-      if (parent) parent.querySelectorAll('[data-category]').forEach(t => t.classList.remove('active'));
-      pill.classList.add('active');
-      state.activeCategory = pill.getAttribute('data-category');
+      const catId = pill.getAttribute('data-category');
+      selectCategory(catId);
       fetchPrompts();
-    });
-  });
-
-  // Type pill bindings
-  const typePills = document.querySelectorAll('[data-type]');
-  typePills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      const parent = pill.closest('.pill-group');
-      if (parent) parent.querySelectorAll('[data-type]').forEach(t => t.classList.remove('active'));
-      pill.classList.add('active');
-      
-      const type = pill.getAttribute('data-type');
-      if (type === 'video' || type === 'premium') {
-        state.prompts = [];
-        renderPrompts();
-      } else {
-        fetchPrompts();
-      }
     });
   });
 
