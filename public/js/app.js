@@ -1073,6 +1073,16 @@ function setupEvents() {
     });
   });
 
+  // Filters toggle button binding
+  const btnToggleFilters = document.getElementById('btn-toggle-filters');
+  const filtersPillsRow = document.getElementById('filters-pills-row');
+  if (btnToggleFilters && filtersPillsRow) {
+    btnToggleFilters.addEventListener('click', () => {
+      const isHidden = window.getComputedStyle(filtersPillsRow).display === 'none';
+      filtersPillsRow.style.display = isHidden ? 'flex' : 'none';
+    });
+  }
+
   // Favorites Header Icon binding
   const btnFavoritesHeader = document.getElementById('btn-favorites');
   if (btnFavoritesHeader) {
