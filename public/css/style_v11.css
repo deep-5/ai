@@ -549,7 +549,7 @@ button {
 .main-content {
   flex-grow: 1;
   margin-left: 0; /* No sidebar margin */
-  padding: 105px 2rem 2rem 2rem; /* Adjusted top padding to clear fixed header */
+  padding: 1.5rem 2rem 2rem 2rem;
   display: flex;
   flex-direction: column;
 }
@@ -1953,7 +1953,7 @@ footer {
   }
   .main-content {
     margin-left: 0;
-    padding-top: 5rem;
+    padding-top: 1rem;
     padding-left: 1.25rem;
     padding-right: 1.25rem;
   }
@@ -1983,25 +1983,8 @@ footer {
 }
 
 @media (max-width: 600px) {
-  .banana-header {
-    top: 0.5rem !important;
-    width: calc(100% - 1rem) !important;
-    height: 58px !important;
-    padding: 0 0.75rem !important;
-  }
-  .banana-logo-text {
-    font-size: 0.95rem !important;
-  }
-  .banana-nav-links {
-    display: none !important;
-  }
-  .banana-login-btn {
-    padding: 0.4rem 0.85rem !important;
-    font-size: 0.8rem !important;
-    gap: 0.35rem !important;
-  }
   .main-content {
-    padding-top: 84px !important;
+    padding-top: 1rem !important;
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
   }
@@ -2197,7 +2180,7 @@ footer {
 /* AI Prompt Library Hero Section */
 .library-hero {
   text-align: center;
-  padding: 8rem 1.5rem 2rem 1.5rem;
+  padding: 3rem 1.5rem 2rem 1.5rem;
   max-width: 800px;
   margin: 0 auto;
   display: flex;
@@ -2402,7 +2385,7 @@ footer {
 
 @media (max-width: 800px) {
   .library-hero {
-    padding-top: 6rem;
+    padding-top: 2rem;
   }
   .library-title {
     font-size: 2.25rem;
