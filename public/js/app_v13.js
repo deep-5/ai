@@ -1132,27 +1132,54 @@ function setupEvents() {
     selectCategory('all');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     dockBtnHome.classList.add('active');
-    dockBtnHistory.classList.remove('active');
+    if (dockBtnHistory) dockBtnHistory.classList.remove('active');
     if (dockBtnFavorites) dockBtnFavorites.classList.remove('active');
   });
 
-  dockBtnHistory.addEventListener('click', () => {
-    feedViewContainer.classList.add('hidden');
-    profileViewContainer.classList.remove('hidden');
-    if (studioViewContainer) studioViewContainer.classList.add('hidden');
+  if (dockBtnHistory) {
+    dockBtnHistory.addEventListener('click', () => {
+      feedViewContainer.classList.add('hidden');
+      profileViewContainer.classList.remove('hidden');
+      if (studioViewContainer) studioViewContainer.classList.add('hidden');
 
-    // Show newest first
-    state.activeSort = 'newest';
-    sortingTabs.forEach(t => {
-      if(t.getAttribute('data-sort') === 'newest') t.classList.add('active');
-      else t.classList.remove('active');
+      // Show newest first
+      state.activeSort = 'newest';
+      sortingTabs.forEach(t => {
+        if(t.getAttribute('data-sort') === 'newest') t.classList.add('active');
+        else t.classList.remove('active');
+      });
+      renderProfilePrompts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      dockBtnHome.classList.remove('active');
+      dockBtnHistory.classList.add('active');
+      if (dockBtnFavorites) dockBtnFavorites.classList.remove('active');
     });
-    renderProfilePrompts();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    dockBtnHome.classList.remove('active');
-    dockBtnHistory.classList.add('active');
-    if (dockBtnFavorites) dockBtnFavorites.classList.remove('active');
-  });
+  }
+
+  if (dockBtnFavorites) {
+    dockBtnFavorites.addEventListener('click', () => {
+      feedViewContainer.classList.add('hidden');
+      profileViewContainer.classList.remove('hidden');
+      if (studioViewContainer) studioViewContainer.classList.add('hidden');
+
+      profileActiveTab = 'liked';
+      if (profileTabLiked) {
+        profileTabLiked.classList.add('active');
+        profileTabLiked.style.color = 'var(--text-primary)';
+        profileTabLiked.style.borderBottomColor = '#111111';
+      }
+      if (profileTabCreated) {
+        profileTabCreated.classList.remove('active');
+        profileTabCreated.style.color = 'var(--text-secondary)';
+        profileTabCreated.style.borderBottomColor = 'transparent';
+      }
+      renderProfilePrompts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      dockBtnHome.classList.remove('active');
+      if (dockBtnHistory) dockBtnHistory.classList.remove('active');
+      dockBtnFavorites.classList.add('active');
+    });
+  }
 
   dockBtnAdd.addEventListener('click', openSubmitModal);
 

@@ -121,9 +121,91 @@ async function initDbSchema() {
     if (client) client.release();
   }
 }
+
+const sourceSupabaseUrl = 'https://vybodlsrfbqlzegnhukx.supabase.co';
+const sourceAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Ym9kbHNyZmJxbHplZ25odWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0MzMxNzcsImV4cCI6MjA4MzAwOTE3N30.ou9E1aYYcAi3jkRSENFccaTE0B4v7KDHAmOeV1ubhqY';
+
+async function startPromptSync() {
+  const https = require('https');
+  const syncFunc = async () => {
+    try {
+      console.log('[Sync] Fetching source prompts from bananapromptai...');
+      const url = `${sourceSupabaseUrl}/rest/v1/prompts?select=*&order=created_at.desc`;
+      const options = {
+        headers: {
+          'apikey': sourceAnonKey,
+          'Authorization': `Bearer ${sourceAnonKey}`
+        }
+      };
+      
+      https.get(url, options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', async () => {
+          try {
+            const sourcePrompts = JSON.parse(data);
+            if (!Array.isArray(sourcePrompts)) return;
+
+            let insertedCount = 0;
+            for (const sp of sourcePrompts) {
+              const checkExist = await pool.query('SELECT 1 FROM prompts WHERE id = $1', [sp.id]);
+              if (checkExist.rows.length === 0) {
+                let category = 'other';
+                if (sp.gender === 'female') category = 'girl';
+                else if (sp.gender === 'male') category = 'boy';
+
+                await pool.query(`
+                  INSERT INTO prompts (
+                    id, title, "promptText", "negativePrompt", "imageUrl", 
+                    category, model, status, "aspectRatio", "cfgScale", 
+                    steps, sampler, seed, "creatorName", "createdAt"
+                  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                `, [
+                  sp.id,
+                  sp.title || 'Untitled Prompt',
+                  sp.prompt || '',
+                  sp.negative_prompt || '',
+                  sp.image_url || '',
+                  category,
+                  sp.model || 'Midjourney',
+                  'approved',
+                  '1:1',
+                  7.0,
+                  30,
+                  'Euler a',
+                  'Random',
+                  'Deep',
+                  sp.created_at
+                ]);
+                insertedCount++;
+              }
+            }
+            if (insertedCount > 0) {
+              console.log(`[Sync] Automatically imported ${insertedCount} new prompts from bananapromptai.`);
+            }
+          } catch (e) {
+            console.error('[Sync] Error processing source prompts:', e.message);
+          }
+        });
+      }).on('error', (e) => {
+        console.error('[Sync] Request error:', e.message);
+      });
+    } catch (err) {
+      console.error('[Sync] Error during sync:', err.message);
+    }
+  };
+
+  // Run on start and then every 10 minutes
+  await syncFunc();
+  setInterval(syncFunc, 10 * 60 * 1000);
+}
+
 if (process.env.NODE_ENV !== 'production') {
   initDbSchema();
 }
+
+// Call on startup
+startPromptSync().catch(console.error);
 
 // Helper to format settings object from database rows
 async function getSettings() {
