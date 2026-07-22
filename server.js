@@ -184,7 +184,7 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim 5 unposted Girl prompts (strictly excluding male/couple terms)
+      // Atomic query: claim 5 unposted Girl prompts (strictly excluding any male/couple terms)
       const claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
@@ -193,17 +193,8 @@ async function startTelegramScheduler() {
           WHERE status = 'approved' 
             AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-            AND LOWER("promptText") NOT LIKE '% man %'
-            AND LOWER("promptText") NOT LIKE '% man,%'
-            AND LOWER("promptText") NOT LIKE '% man.%'
-            AND LOWER("promptText") NOT LIKE '%boy%'
-            AND LOWER("promptText") NOT LIKE '%male%'
-            AND LOWER("promptText") NOT LIKE '% guy %'
-            AND LOWER("promptText") NOT LIKE '% couple %'
-            AND LOWER(title) NOT LIKE '%man%'
-            AND LOWER(title) NOT LIKE '%boy%'
-            AND LOWER(title) NOT LIKE '%male%'
-            AND LOWER(title) NOT LIKE '%couple%'
+            AND LOWER("promptText") NOT ~* '\\b(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|boyfriend|brother|father|son|he|him|his|couple|lovers|wedding)\\b'
+            AND LOWER(title) NOT ~* '\\b(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|boyfriend|brother|father|son|he|him|his|couple|lovers|wedding)\\b'
           ORDER BY "createdAt" ASC 
           LIMIT 5
         )
