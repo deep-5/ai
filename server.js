@@ -184,7 +184,7 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim 10 unposted Girl prompts and mark them TRUE immediately
+      // Atomic query: claim 30 unposted Girl prompts and mark them TRUE immediately
       const claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
@@ -194,7 +194,7 @@ async function startTelegramScheduler() {
             AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
           ORDER BY "createdAt" ASC 
-          LIMIT 10
+          LIMIT 30
         )
         RETURNING *;
       `);
@@ -202,7 +202,7 @@ async function startTelegramScheduler() {
       const prompts = claimResult.rows;
       if (prompts.length === 0) return;
 
-      console.log(`[Telegram Scheduler] Atomically claimed ${prompts.length} Girl prompts for Telegram batch.`);
+      console.log(`[Telegram Scheduler] Atomically claimed ${prompts.length} Girl prompts for Telegram batch of 30.`);
 
       for (const p of prompts) {
         const title = escapeHtml(p.title || 'AI Image Prompt');
@@ -253,8 +253,8 @@ async function startTelegramScheduler() {
         req.write(postData);
         req.end();
 
-        // 35 seconds gap between posts in the batch of 10
-        await new Promise(r => setTimeout(r, 35000));
+        // 18 seconds gap between posts in the batch of 30
+        await new Promise(r => setTimeout(r, 18000));
       }
     } catch (err) {
       console.error('[Telegram Scheduler] Exception:', err.message);
