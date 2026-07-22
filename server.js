@@ -122,8 +122,61 @@ async function initDbSchema() {
   }
 }
 
-const sourceSupabaseUrl = 'https://vybodlsrfbqlzegnhukx.supabase.co';
-const sourceAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Ym9kbHNyZmJxbHplZ25odWt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0MzMxNzcsImV4cCI6MjA4MzAwOTE3N30.ou9E1aYYcAi3jkRSENFccaTE0B4v7KDHAmOeV1ubhqY';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8731186278:AAHEbcl3PDDbsUOdDdS8kjUvxNdPavfcDvU';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1003876914061';
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function postToTelegram(p) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const https = require('https');
+  try {
+    const title = escapeHtml(p.title || 'AI Image Prompt');
+    const promptText = escapeHtml(p.promptText || p.prompt || '');
+    const category = escapeHtml(p.category || 'All');
+    const model = escapeHtml(p.model || 'Midjourney');
+
+    let caption = `<b>🎨 ${title}</b>\n\n`;
+    caption += `<b>📝 Prompt:</b>\n<code>${promptText}</code>\n\n`;
+    caption += `<b>🏷 Category:</b> #${category} | <b>🤖 Model:</b> #${model}\n\n`;
+    caption += `🌐 <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
+
+    if (caption.length > 1024) {
+      const maxPromptLen = 1024 - (caption.length - promptText.length) - 10;
+      const truncatedPrompt = promptText.substring(0, Math.max(50, maxPromptLen)) + '...';
+      caption = `<b>🎨 ${title}</b>\n\n`;
+      caption += `<b>📝 Prompt:</b>\n<code>${truncatedPrompt}</code>\n\n`;
+      caption += `<b>🏷 Category:</b> #${category} | <b>🤖 Model:</b> #${model}\n\n`;
+      caption += `🌐 <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
+    }
+
+    const isPhoto = p.imageUrl && p.imageUrl.startsWith('http');
+    const endpoint = isPhoto ? 'sendPhoto' : 'sendMessage';
+    const payload = isPhoto
+      ? { chat_id: TELEGRAM_CHAT_ID, photo: p.imageUrl, caption: caption, parse_mode: 'HTML' }
+      : { chat_id: TELEGRAM_CHAT_ID, text: caption, parse_mode: 'HTML' };
+
+    const postData = JSON.stringify(payload);
+    const req = https.request(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    });
+    req.on('error', (e) => console.error('[Telegram] Post error:', e.message));
+    req.write(postData);
+    req.end();
+  } catch (err) {
+    console.error('[Telegram] Post failed:', err.message);
+  }
+}
 
 async function startPromptSync() {
   const https = require('https');
@@ -154,6 +207,24 @@ async function startPromptSync() {
                 if (sp.gender === 'female') category = 'girl';
                 else if (sp.gender === 'male') category = 'boy';
 
+                const newPromptObj = {
+                  id: sp.id,
+                  title: sp.title || 'Untitled Prompt',
+                  promptText: sp.prompt || '',
+                  negativePrompt: sp.negative_prompt || '',
+                  imageUrl: sp.image_url || '',
+                  category: category,
+                  model: sp.model || 'Midjourney',
+                  status: 'approved',
+                  aspectRatio: '1:1',
+                  cfgScale: 7.0,
+                  steps: 30,
+                  sampler: 'Euler a',
+                  seed: 'Random',
+                  creatorName: 'Deep',
+                  createdAt: sp.created_at
+                };
+
                 await pool.query(`
                   INSERT INTO prompts (
                     id, title, "promptText", "negativePrompt", "imageUrl", 
@@ -161,27 +232,30 @@ async function startPromptSync() {
                     steps, sampler, seed, "creatorName", "createdAt"
                   ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 `, [
-                  sp.id,
-                  sp.title || 'Untitled Prompt',
-                  sp.prompt || '',
-                  sp.negative_prompt || '',
-                  sp.image_url || '',
-                  category,
-                  sp.model || 'Midjourney',
-                  'approved',
-                  '1:1',
-                  7.0,
-                  30,
-                  'Euler a',
-                  'Random',
-                  'Deep',
-                  sp.created_at
+                  newPromptObj.id,
+                  newPromptObj.title,
+                  newPromptObj.promptText,
+                  newPromptObj.negativePrompt,
+                  newPromptObj.imageUrl,
+                  newPromptObj.category,
+                  newPromptObj.model,
+                  newPromptObj.status,
+                  newPromptObj.aspectRatio,
+                  newPromptObj.cfgScale,
+                  newPromptObj.steps,
+                  newPromptObj.sampler,
+                  newPromptObj.seed,
+                  newPromptObj.creatorName,
+                  newPromptObj.createdAt
                 ]);
+
+                // Auto post to Telegram
+                postToTelegram(newPromptObj);
                 insertedCount++;
               }
             }
             if (insertedCount > 0) {
-              console.log(`[Sync] Automatically imported ${insertedCount} new prompts from bananapromptai.`);
+              console.log(`[Sync] Automatically imported & posted ${insertedCount} new prompts from bananapromptai.`);
             }
           } catch (e) {
             console.error('[Sync] Error processing source prompts:', e.message);
@@ -917,6 +991,7 @@ app.post('/api/admin/pending/:id/approve', authenticateToken, async (req, res) =
 
     await pool.query("UPDATE prompts SET status = 'approved' WHERE id = $1", [id]);
     const approvedPrompt = { ...resDb.rows[0], status: 'approved' };
+    postToTelegram(approvedPrompt);
     res.json({ message: 'Submission approved and is now live!', prompt: approvedPrompt });
   } catch (err) {
     res.status(500).json({ error: 'Failed to approve submission' });
