@@ -203,10 +203,9 @@ async function startTelegramScheduler() {
 
       let prompts = claimResult.rows;
 
-      // If all prompts have been posted once, reset isPostedToTelegram = FALSE so continuous posting never stops!
+      // If all available prompts have been posted once, wait for new synced prompts without re-posting old ones!
       if (prompts.length === 0) {
-        console.log('[Telegram Scheduler 24/7] Completed full cycle of Girl & Couple prompts. Resetting queue for continuous rotation...');
-        await pool.query(`UPDATE prompts SET "isPostedToTelegram" = FALSE WHERE category = 'girl'`);
+        console.log('[Telegram Scheduler 24/7] All available Girl prompts posted! Waiting for new synced prompts (Zero Re-posting)...');
         return;
       }
 
