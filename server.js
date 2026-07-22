@@ -184,7 +184,7 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim 30 unposted Girl prompts and mark them TRUE immediately
+      // Atomic query: claim 5 unposted Girl prompts and mark them TRUE immediately
       const claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
@@ -194,7 +194,7 @@ async function startTelegramScheduler() {
             AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
           ORDER BY "createdAt" ASC 
-          LIMIT 30
+          LIMIT 5
         )
         RETURNING *;
       `);
@@ -202,7 +202,7 @@ async function startTelegramScheduler() {
       const prompts = claimResult.rows;
       if (prompts.length === 0) return;
 
-      console.log(`[Telegram Scheduler] Atomically claimed ${prompts.length} Girl prompts for Telegram batch of 30.`);
+      console.log(`[Telegram Scheduler 24/7] Atomically claimed ${prompts.length} Girl prompts.`);
 
       for (const p of prompts) {
         const title = escapeHtml(p.title || 'AI Image Prompt');
@@ -244,7 +244,7 @@ async function startTelegramScheduler() {
             try {
               const resJson = JSON.parse(body);
               if (resJson && resJson.ok) {
-                console.log(`[Telegram Scheduler] Posted ID ${p.id}`);
+                console.log(`[Telegram Scheduler 24/7] Posted ID ${p.id}`);
               }
             } catch (e) {}
           });
@@ -253,17 +253,17 @@ async function startTelegramScheduler() {
         req.write(postData);
         req.end();
 
-        // 18 seconds gap between posts in the batch of 30
-        await new Promise(r => setTimeout(r, 18000));
+        // 10 seconds gap between posts in the 1-minute batch
+        await new Promise(r => setTimeout(r, 10000));
       }
     } catch (err) {
       console.error('[Telegram Scheduler] Exception:', err.message);
     }
   };
 
-  // Run initial check and repeat every 10 minutes (600,000 ms)
+  // Run initial check and repeat every 1 minute (60,000 ms) 24/7 on cloud
   await sendBatch();
-  setInterval(sendBatch, 10 * 60 * 1000);
+  setInterval(sendBatch, 60 * 1000);
 }
 
 async function startPromptSync() {
