@@ -123,7 +123,7 @@ async function initDbSchema() {
 }
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8731186278:AAHEbcl3PDDbsUOdDdS8kjUvxNdPavfcDvU';
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1003876914061';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '@GemaniPrompt_21';
 
 function escapeHtml(text) {
   if (!text) return '';
