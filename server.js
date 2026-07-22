@@ -184,7 +184,7 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim 5 unposted Girl & Couple prompts (strictly excluding Single Boy prompts)
+      // Atomic query: claim 5 unposted Girl prompts (strictly MUST contain female terms AND MUST NOT contain male terms)
       let claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
@@ -193,8 +193,8 @@ async function startTelegramScheduler() {
           WHERE status = 'approved' 
             AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-            AND NOT (LOWER("promptText") ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b')
-            AND NOT (LOWER(title) ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b')
+            AND LOWER("promptText" || ' ' || title) ~* '\\b(woman|women|girl|girls|female|females|lady|ladies|she|her|actress|queen|beauty|dress|saree|bikini|skirt|cleavage|voluptuous|curvy)\\b'
+            AND NOT (LOWER("promptText" || ' ' || title) ~* '\\b(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|brother|father|son|he|him|his|groom|groomsmen|masculine)\\b')
           ORDER BY "createdAt" ASC 
           LIMIT 5
         )
