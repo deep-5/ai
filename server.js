@@ -184,17 +184,25 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      const resDb = await pool.query(`
-        SELECT * FROM prompts 
-        WHERE status = 'approved' 
-          AND category = 'girl' 
-          AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-        ORDER BY "createdAt" ASC 
-        LIMIT 10
+      // Atomic query: claim 10 unposted Girl prompts and mark them TRUE immediately
+      const claimResult = await pool.query(`
+        UPDATE prompts 
+        SET "isPostedToTelegram" = TRUE 
+        WHERE id IN (
+          SELECT id FROM prompts 
+          WHERE status = 'approved' 
+            AND category = 'girl' 
+            AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
+          ORDER BY "createdAt" ASC 
+          LIMIT 10
+        )
+        RETURNING *;
       `);
 
-      const prompts = resDb.rows;
+      const prompts = claimResult.rows;
       if (prompts.length === 0) return;
+
+      console.log(`[Telegram Scheduler] Atomically claimed ${prompts.length} Girl prompts for Telegram batch.`);
 
       for (const p of prompts) {
         const title = escapeHtml(p.title || 'AI Image Prompt');
@@ -232,12 +240,11 @@ async function startTelegramScheduler() {
         }, (res) => {
           let body = '';
           res.on('data', chunk => body += chunk);
-          res.on('end', async () => {
+          res.on('end', () => {
             try {
               const resJson = JSON.parse(body);
               if (resJson && resJson.ok) {
-                await pool.query(`UPDATE prompts SET "isPostedToTelegram" = TRUE WHERE id = $1`, [p.id]);
-                console.log(`[Telegram Scheduler] Successfully posted & marked ID ${p.id}`);
+                console.log(`[Telegram Scheduler] Posted ID ${p.id}`);
               }
             } catch (e) {}
           });
@@ -330,13 +337,11 @@ async function startPromptSync() {
                   newPromptObj.createdAt
                 ]);
 
-                // Auto post to Telegram
-                postToTelegram(newPromptObj);
                 insertedCount++;
               }
             }
             if (insertedCount > 0) {
-              console.log(`[Sync] Automatically imported & posted ${insertedCount} new prompts from bananapromptai.`);
+              console.log(`[Sync] Automatically imported ${insertedCount} new prompts into database.`);
             }
           } catch (e) {
             console.error('[Sync] Error processing source prompts:', e.message);
