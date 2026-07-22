@@ -184,19 +184,19 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim unposted @pixelbyus prompts ONLY (permanently mark isPostedToTelegram = TRUE to prevent retries)
+      // Atomic query: claim 5 unposted Girl prompts (checking permanent telegram_sent_log table to prevent any duplicates)
       let claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
         WHERE id IN (
           SELECT id FROM prompts 
           WHERE status = 'approved' 
+            AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-            AND (
-              id LIKE 'pixelbyus%' 
-              OR LOWER(COALESCE("creatorName", '')) LIKE '%pixelbyus%' 
-              OR LOWER(COALESCE(title, '')) LIKE '%pixelbyus%'
-            )
+            AND "imageUrl" NOT IN (SELECT image_url FROM telegram_sent_log WHERE image_url IS NOT NULL)
+            AND id NOT IN (SELECT prompt_id FROM telegram_sent_log WHERE prompt_id IS NOT NULL)
+            AND LOWER(COALESCE("promptText", '') || ' ' || COALESCE(title, '')) ~* '\\y(woman|women|girl|girls|female|females|lady|ladies|she|her|actress|queen|beauty|dress|saree|bikini|skirt|cleavage|voluptuous|curvy)\\y'
+            AND NOT (LOWER(COALESCE("promptText", '') || ' ' || COALESCE(title, '')) ~* '\\y(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|brother|father|son|he|him|his|groom|groomsmen|masculine)\\y')
           ORDER BY "createdAt" ASC 
           LIMIT 5
         )
