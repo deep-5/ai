@@ -190,7 +190,7 @@ async function startTelegramScheduler() {
           AND category = 'girl' 
           AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
         ORDER BY "createdAt" ASC 
-        LIMIT 2
+        LIMIT 10
       `);
 
       const prompts = resDb.rows;
@@ -246,8 +246,8 @@ async function startTelegramScheduler() {
         req.write(postData);
         req.end();
 
-        // 5 seconds gap between batch items
-        await new Promise(r => setTimeout(r, 5000));
+        // 35 seconds gap between posts in the batch of 10
+        await new Promise(r => setTimeout(r, 35000));
       }
     } catch (err) {
       console.error('[Telegram Scheduler] Exception:', err.message);
