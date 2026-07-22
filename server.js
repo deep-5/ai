@@ -180,6 +180,85 @@ function postToTelegram(p) {
   }
 }
 
+async function startTelegramScheduler() {
+  const https = require('https');
+  const sendBatch = async () => {
+    try {
+      const resDb = await pool.query(`
+        SELECT * FROM prompts 
+        WHERE status = 'approved' 
+          AND category = 'girl' 
+          AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
+        ORDER BY "createdAt" ASC 
+        LIMIT 2
+      `);
+
+      const prompts = resDb.rows;
+      if (prompts.length === 0) return;
+
+      for (const p of prompts) {
+        const title = escapeHtml(p.title || 'AI Image Prompt');
+        const promptText = escapeHtml(p.promptText || p.prompt || '');
+        const category = escapeHtml(p.category || 'Girl');
+        const model = escapeHtml(p.model || 'Midjourney');
+
+        let caption = `<b>🎨 ${title}</b>\n\n`;
+        caption += `<b>📝 Prompt:</b>\n<code>${promptText}</code>\n\n`;
+        caption += `<b>🏷 Category:</b> #${category} | <b>🤖 Model:</b> #${model}\n\n`;
+        caption += `🌐 <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
+
+        if (caption.length > 1024) {
+          const maxPromptLen = 1024 - (caption.length - promptText.length) - 10;
+          const truncatedPrompt = promptText.substring(0, Math.max(50, maxPromptLen)) + '...';
+          caption = `<b>🎨 ${title}</b>\n\n`;
+          caption += `<b>📝 Prompt:</b>\n<code>${truncatedPrompt}</code>\n\n`;
+          caption += `<b>🏷 Category:</b> #${category} | <b>🤖 Model:</b> #${model}\n\n`;
+          caption += `🌐 <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
+        }
+
+        const isPhoto = p.imageUrl && p.imageUrl.startsWith('http');
+        const endpoint = isPhoto ? 'sendPhoto' : 'sendMessage';
+        const payload = isPhoto
+          ? { chat_id: TELEGRAM_CHAT_ID, photo: p.imageUrl, caption: caption, parse_mode: 'HTML' }
+          : { chat_id: TELEGRAM_CHAT_ID, text: caption, parse_mode: 'HTML' };
+
+        const postData = JSON.stringify(payload);
+        const req = https.request(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        }, (res) => {
+          let body = '';
+          res.on('data', chunk => body += chunk);
+          res.on('end', async () => {
+            try {
+              const resJson = JSON.parse(body);
+              if (resJson && resJson.ok) {
+                await pool.query(`UPDATE prompts SET "isPostedToTelegram" = TRUE WHERE id = $1`, [p.id]);
+                console.log(`[Telegram Scheduler] Successfully posted & marked ID ${p.id}`);
+              }
+            } catch (e) {}
+          });
+        });
+        req.on('error', (e) => console.error('[Telegram Scheduler] Post error:', e.message));
+        req.write(postData);
+        req.end();
+
+        // 5 seconds gap between batch items
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    } catch (err) {
+      console.error('[Telegram Scheduler] Exception:', err.message);
+    }
+  };
+
+  // Run initial check and repeat every 10 minutes (600,000 ms)
+  await sendBatch();
+  setInterval(sendBatch, 10 * 60 * 1000);
+}
+
 async function startPromptSync() {
   const https = require('https');
   const syncFunc = async () => {
@@ -282,6 +361,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Call on startup
 startPromptSync().catch(console.error);
+startTelegramScheduler().catch(console.error);
 
 // Helper to format settings object from database rows
 async function getSettings() {
