@@ -193,8 +193,8 @@ async function startTelegramScheduler() {
           WHERE status = 'approved' 
             AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-            AND LOWER("promptText") NOT ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b'
-            AND LOWER(title) NOT ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b'
+            AND NOT (LOWER("promptText") ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b')
+            AND NOT (LOWER(title) ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b')
           ORDER BY "createdAt" ASC 
           LIMIT 5
         )
