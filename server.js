@@ -184,8 +184,8 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim 5 unposted Girl prompts (strictly excluding any male/couple terms)
-      const claimResult = await pool.query(`
+      // Atomic query: claim 5 unposted Girl & Couple prompts (strictly excluding Single Boy prompts)
+      let claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
         WHERE id IN (
@@ -193,18 +193,24 @@ async function startTelegramScheduler() {
           WHERE status = 'approved' 
             AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-            AND LOWER("promptText") NOT ~* '\\b(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|boyfriend|brother|father|son|he|him|his|couple|lovers|wedding)\\b'
-            AND LOWER(title) NOT ~* '\\b(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|boyfriend|brother|father|son|he|him|his|couple|lovers|wedding)\\b'
+            AND LOWER("promptText") NOT ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b'
+            AND LOWER(title) NOT ~* '\\b(handsome man|young man|single man|handsome boy|young boy|male model|mustache|gentleman|male portrait|man sitting|man standing|boy sitting|boy standing)\\b'
           ORDER BY "createdAt" ASC 
           LIMIT 5
         )
         RETURNING *;
       `);
 
-      const prompts = claimResult.rows;
-      if (prompts.length === 0) return;
+      let prompts = claimResult.rows;
 
-      console.log(`[Telegram Scheduler 24/7] Atomically claimed ${prompts.length} Girl prompts.`);
+      // If all prompts have been posted once, reset isPostedToTelegram = FALSE so continuous posting never stops!
+      if (prompts.length === 0) {
+        console.log('[Telegram Scheduler 24/7] Completed full cycle of Girl & Couple prompts. Resetting queue for continuous rotation...');
+        await pool.query(`UPDATE prompts SET "isPostedToTelegram" = FALSE WHERE category = 'girl'`);
+        return;
+      }
+
+      console.log(`[Telegram Scheduler 24/7] Atomically claimed ${prompts.length} Girl & Couple prompts.`);
 
       for (const p of prompts) {
         const title = escapeHtml(p.title || 'AI Image Prompt');
