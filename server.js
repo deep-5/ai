@@ -193,8 +193,8 @@ async function startTelegramScheduler() {
           WHERE status = 'approved' 
             AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-            AND LOWER("promptText" || ' ' || title) ~* '\\b(woman|women|girl|girls|female|females|lady|ladies|she|her|actress|queen|beauty|dress|saree|bikini|skirt|cleavage|voluptuous|curvy)\\b'
-            AND NOT (LOWER("promptText" || ' ' || title) ~* '\\b(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|brother|father|son|he|him|his|groom|groomsmen|masculine)\\b')
+            AND LOWER(COALESCE("promptText", '') || ' ' || COALESCE(title, '')) ~* '\\y(woman|women|girl|girls|female|females|lady|ladies|she|her|actress|queen|beauty|dress|saree|bikini|skirt|cleavage|voluptuous|curvy)\\y'
+            AND NOT (LOWER(COALESCE("promptText", '') || ' ' || COALESCE(title, '')) ~* '\\y(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|brother|father|son|he|him|his|groom|groomsmen|masculine)\\y')
           ORDER BY "createdAt" ASC 
           LIMIT 5
         )
