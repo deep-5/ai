@@ -184,17 +184,19 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim 5 unposted Girl prompts (permanently mark isPostedToTelegram = TRUE to prevent retries)
+      // Atomic query: claim unposted @pixelbyus prompts ONLY (permanently mark isPostedToTelegram = TRUE to prevent retries)
       let claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
         WHERE id IN (
           SELECT id FROM prompts 
           WHERE status = 'approved' 
-            AND category = 'girl' 
             AND ("isPostedToTelegram" IS FALSE OR "isPostedToTelegram" IS NULL)
-            AND LOWER(COALESCE("promptText", '') || ' ' || COALESCE(title, '')) ~* '\\y(woman|women|girl|girls|female|females|lady|ladies|she|her|actress|queen|beauty|dress|saree|bikini|skirt|cleavage|voluptuous|curvy)\\y'
-            AND NOT (LOWER(COALESCE("promptText", '') || ' ' || COALESCE(title, '')) ~* '\\y(man|men|boy|boys|male|males|guy|guys|dude|dudes|handsome|beard|mustache|gentleman|actor|husband|brother|father|son|he|him|his|groom|groomsmen|masculine)\\y')
+            AND (
+              id LIKE 'pixelbyus%' 
+              OR LOWER(COALESCE("creatorName", '')) LIKE '%pixelbyus%' 
+              OR LOWER(COALESCE(title, '')) LIKE '%pixelbyus%'
+            )
           ORDER BY "createdAt" ASC 
           LIMIT 5
         )
@@ -203,64 +205,114 @@ async function startTelegramScheduler() {
 
       let prompts = claimResult.rows;
 
-      // If all available prompts have been posted once, wait for new synced prompts without re-posting old ones!
       if (prompts.length === 0) {
-        console.log('[Telegram Scheduler 24/7] All available Girl prompts posted! Waiting for new synced prompts (Zero Re-posting)...');
+        console.log('[Telegram Scheduler 24/7] All @pixelbyus prompts posted to Telegram! Waiting for new @pixelbyus prompts...');
         return;
       }
 
-      console.log(`[Telegram Scheduler 24/7] Atomically claimed ${prompts.length} Girl & Couple prompts.`);
+      console.log(`[Telegram Scheduler 24/7] Atomically claimed ${prompts.length} @pixelbyus prompts for Telegram.`);
 
       for (const p of prompts) {
-        const title = escapeHtml(p.title || 'AI Image Prompt');
+        const title = escapeHtml(p.title || 'PixelByUs AI Prompt');
         const promptText = escapeHtml(p.promptText || p.prompt || '');
         const category = escapeHtml(p.category || 'Girl');
-        const model = escapeHtml(p.model || 'Midjourney');
+        const model = escapeHtml(p.model || 'Flux');
 
         let caption = `<b>🎨 ${title}</b>\n\n`;
+        caption += `<b>👤 Creator:</b> <a href="https://x.com/pixelbyus">@pixelbyus</a>\n`;
         caption += `<b>📝 Prompt:</b>\n<code>${promptText}</code>\n\n`;
         caption += `<b>🏷 Category:</b> #${category} | <b>🤖 Model:</b> #${model}\n\n`;
-        caption += `🌐 <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
+        caption += `🌐 <a href="https://t.me/+fT10nGL2pVFmNWI9">Join Telegram Group</a> | <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
 
         if (caption.length > 1024) {
           const maxPromptLen = 1024 - (caption.length - promptText.length) - 10;
           const truncatedPrompt = promptText.substring(0, Math.max(50, maxPromptLen)) + '...';
           caption = `<b>🎨 ${title}</b>\n\n`;
+          caption += `<b>👤 Creator:</b> <a href="https://x.com/pixelbyus">@pixelbyus</a>\n`;
           caption += `<b>📝 Prompt:</b>\n<code>${truncatedPrompt}</code>\n\n`;
           caption += `<b>🏷 Category:</b> #${category} | <b>🤖 Model:</b> #${model}\n\n`;
-          caption += `🌐 <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
+          caption += `🌐 <a href="https://t.me/+fT10nGL2pVFmNWI9">Join Telegram Group</a> | <a href="https://ai-3tep.vercel.app">Prompt AI Workspace</a>`;
         }
 
-        const isPhoto = p.imageUrl && p.imageUrl.startsWith('http');
-        const endpoint = isPhoto ? 'sendPhoto' : 'sendMessage';
-        const payload = isPhoto
-          ? { chat_id: TELEGRAM_CHAT_ID, photo: p.imageUrl, caption: caption, parse_mode: 'HTML' }
-          : { chat_id: TELEGRAM_CHAT_ID, text: caption, parse_mode: 'HTML' };
+        let imageFilePath = '';
+        if (p.imageUrl && p.imageUrl.startsWith('/uploads/')) {
+          imageFilePath = path.join(__dirname, p.imageUrl);
+        } else if (p.imageUrl && p.imageUrl.startsWith('uploads/')) {
+          imageFilePath = path.join(__dirname, p.imageUrl);
+        }
 
-        const postData = JSON.stringify(payload);
-        const req = https.request(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-          }
-        }, (res) => {
-          let body = '';
-          res.on('data', chunk => body += chunk);
-          res.on('end', () => {
-            try {
-              const resJson = JSON.parse(body);
-              if (resJson && resJson.ok) {
-                console.log(`[Telegram Scheduler 24/7] Posted ID ${p.id}`);
-              }
-            } catch (e) {}
+        if (imageFilePath && fs.existsSync(imageFilePath)) {
+          const boundary = '----TelegramBotBoundary' + Date.now().toString(16);
+          const fileStream = fs.createReadStream(imageFilePath);
+
+          let header = '';
+          header += `--${boundary}\r\n`;
+          header += `Content-Disposition: form-data; name="chat_id"\r\n\r\n${TELEGRAM_CHAT_ID}\r\n`;
+          header += `--${boundary}\r\n`;
+          header += `Content-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`;
+          header += `--${boundary}\r\n`;
+          header += `Content-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n`;
+          header += `--${boundary}\r\n`;
+          header += `Content-Disposition: form-data; name="photo"; filename="${path.basename(imageFilePath)}"\r\n`;
+          header += `Content-Type: image/jpeg\r\n\r\n`;
+
+          const footer = `\r\n--${boundary}--\r\n`;
+
+          const req = https.request(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': `multipart/form-data; boundary=${boundary}`
+            }
+          }, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+              try {
+                const resJson = JSON.parse(body);
+                if (resJson && resJson.ok) {
+                  console.log(`[Telegram Scheduler 24/7] Posted @pixelbyus ID ${p.id}`);
+                } else {
+                  console.error(`[Telegram Scheduler 24/7] Error posting ${p.id}:`, resJson);
+                }
+              } catch (e) {}
+            });
           });
-        });
-        req.on('error', (e) => console.error('[Telegram Scheduler] Post error:', e.message));
-        req.write(postData);
-        req.end();
+          req.on('error', (e) => console.error('[Telegram Scheduler] Post error:', e.message));
+          req.write(header);
+          fileStream.pipe(req, { end: false });
+          fileStream.on('end', () => { req.end(footer); });
+        } else {
+          const isPhoto = p.imageUrl && p.imageUrl.startsWith('http');
+          const endpoint = isPhoto ? 'sendPhoto' : 'sendMessage';
+          const payload = isPhoto
+            ? { chat_id: TELEGRAM_CHAT_ID, photo: p.imageUrl, caption: caption, parse_mode: 'HTML' }
+            : { chat_id: TELEGRAM_CHAT_ID, text: caption, parse_mode: 'HTML' };
 
-        // 10 seconds gap between posts in the 1-minute batch
+          const postData = JSON.stringify(payload);
+          const req = https.request(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${endpoint}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(postData)
+            }
+          }, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+              try {
+                const resJson = JSON.parse(body);
+                if (resJson && resJson.ok) {
+                  console.log(`[Telegram Scheduler 24/7] Posted @pixelbyus ID ${p.id}`);
+                }
+              } catch (e) {}
+            });
+          });
+          req.on('error', (e) => console.error('[Telegram Scheduler] Post error:', e.message));
+          req.write(postData);
+          req.end();
+        }
+
+        // 10 seconds gap between posts to prevent Telegram rate limits
         await new Promise(r => setTimeout(r, 10000));
       }
     } catch (err) {
@@ -268,7 +320,7 @@ async function startTelegramScheduler() {
     }
   };
 
-  // Run initial check and repeat every 1 minute (60,000 ms) 24/7 on cloud
+  // Run initial check and repeat every 1 minute 24/7
   await sendBatch();
   setInterval(sendBatch, 60 * 1000);
 }
@@ -754,7 +806,167 @@ async function ensurePromptsUpdated() {
       SET category = 'other', "promptText" = 'Cozy A-frame wooden cabin in a snowy mountain forest at dusk, nature travel landscape, warm yellow light glowing from the windows, soft smoke rising from chimney, winter landscape, high detail painting, digital art, aspect ratio 4:3'
       WHERE id = 'prompt-12';
     `);
-    
+
+    // Insert/update pixelbyus prompts
+    const pixelbyusItems = [
+      {
+        id: 'pixelbyus-post-1',
+        title: 'PixelByUs: Ultra-Realistic Fashion Editorial',
+        promptText: 'ultra-realistic minimalist fashion editorial photography of an elegant female model in a sleek black silk dress, soft studio key lighting, subtle catchlights in eyes, shot on 85mm f/1.8 lens, Hasselblad medium format, ultra-detailed skin texture, neutral background, 8k resolution, aspect ratio 4:5',
+        negativePrompt: 'blurry, low quality, deformed hands, extra fingers, cartoon, 3d render, watermark, text',
+        category: 'girl',
+        model: 'Midjourney',
+        aspectRatio: '4:5',
+        cfgScale: '7.5',
+        steps: '35',
+        sampler: 'DPM++ 2M Karras',
+        seed: '89410294',
+        imageUrl: '/uploads/pixelbyus_post1.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'pixelbyus-post-2',
+        title: 'PixelByUs: Cinematic Golden Hour Streetwear',
+        promptText: 'cinematic urban lifestyle photography of a stylish young male model wearing an oversized retro denim jacket and sunglasses, standing on a Tokyo rooftop during sunset golden hour, dramatic lens flare, bokeh background of city skyline, 35mm film photography texture, hyperrealistic 8k',
+        negativePrompt: 'ugly, deformed face, bad lighting, low resolution, 3d render, text, logo',
+        category: 'boy',
+        model: 'Flux',
+        aspectRatio: '3:4',
+        cfgScale: '7.0',
+        steps: '30',
+        sampler: 'Euler a',
+        seed: '71029482',
+        imageUrl: '/uploads/pixelbyus_post2.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: new Date(Date.now() - 1000).toISOString()
+      },
+      {
+        id: 'pixelbyus-post-3',
+        title: 'PixelByUs: Royal Emerald Saree Photo Shoot',
+        promptText: 'high fashion magazine photography of a gorgeous Indian bride model in a royal emerald green embroidered saree, intricate golden jewelry, soft rim lighting, warm bokeh background, photorealistic 8k, Vogue magazine aesthetic',
+        negativePrompt: 'blurry, bad hands, low resolution, deformed face, logo, text, watermark',
+        category: 'girl',
+        model: 'Grok Image',
+        aspectRatio: '3:4',
+        cfgScale: '7.0',
+        steps: '35',
+        sampler: 'DPM++ 2M',
+        seed: '10492837',
+        imageUrl: '/uploads/pixelbyus_post3.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: new Date(Date.now() - 2000).toISOString()
+      },
+      {
+        id: 'pixelbyus-2',
+        title: 'Cinematic Golden Hour Streetwear Portrait',
+        promptText: 'Cinematic lifestyle photography of an athletic stylish young man wearing an oversized vintage jacket and sunglasses, standing on a Tokyo rooftop during sunset golden hour, dramatic sunlight flare, bokeh background of skyscraper city skyline, 35mm film photography grain, high fashion aesthetic, hyperrealistic 8k',
+        negativePrompt: 'ugly, deformed face, bad lighting, low resolution, 3d, text',
+        category: 'boy',
+        model: 'Midjourney',
+        aspectRatio: '3:4',
+        cfgScale: '7.0',
+        steps: '30',
+        sampler: 'Euler a',
+        seed: '71029482',
+        imageUrl: '/uploads/pixelbyus_golden_boy.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: '2026-07-22T14:25:00.000Z'
+      },
+      {
+        id: 'pixelbyus-3',
+        title: 'Ethereal Sunlit Greenhouse Silk Portrait',
+        promptText: 'Ultra-realistic aesthetic portrait of an elegant woman sitting gracefully in a minimalist sunlit glass greenhouse room, surrounded by soft monstera leaves, natural sunlight beams filtering through foliage, wearing a silk gown, soft shadow patterns, 50mm portrait photography, masterpiece, 8k',
+        negativePrompt: 'dark, blurry, bad skin, extra limbs, ugly, text, watermark',
+        category: 'girl',
+        model: 'Flux',
+        aspectRatio: '3:4',
+        cfgScale: '6.5',
+        steps: '32',
+        sampler: 'Euler',
+        seed: '54910283',
+        imageUrl: '/uploads/pixelbyus_glass_girl.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: '2026-07-22T14:20:00.000Z'
+      },
+      {
+        id: 'pixelbyus-4',
+        title: 'Moody Black & White Urban Fashion',
+        promptText: 'High contrast black and white editorial street portrait of a male model in a black turtleneck and long trench coat, dramatic shadows, moody rain slick pavement in Paris, classic Leica monochrome aesthetic, sharp focus, hyperrealistic 8k',
+        negativePrompt: 'color, low resolution, blurry, oversaturated, cartoon, 3d render',
+        category: 'boy',
+        model: 'Stable Diffusion',
+        aspectRatio: '3:4',
+        cfgScale: '8.0',
+        steps: '40',
+        sampler: 'DPM++ SDE',
+        seed: '63920194',
+        imageUrl: '/uploads/pixelbyus_bw_fashion.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: '2026-07-22T14:15:00.000Z'
+      },
+      {
+        id: 'pixelbyus-5',
+        title: 'Royal Indian Emerald Couture Shoot',
+        promptText: 'High fashion magazine photography of a gorgeous Indian bride model in a royal emerald green embroidered saree, intricate golden jewelry, dramatic rim lighting, soft bokeh lights background, ultra-detailed texture, photorealistic 8k, aspect ratio 3:4',
+        negativePrompt: 'blurry, bad hands, low resolution, deformed face, logo, text',
+        category: 'girl',
+        model: 'Flux',
+        aspectRatio: '3:4',
+        cfgScale: '7.0',
+        steps: '35',
+        sampler: 'DPM++ 2M',
+        seed: '10492837',
+        imageUrl: '/uploads/pixelbyus_emerald_bride.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: '2026-07-22T14:10:00.000Z'
+      },
+      {
+        id: 'pixelbyus-6',
+        title: 'Chrome Cybernetic Warrior Close Up',
+        promptText: 'Futuristic close-up portrait of a male cyber warrior with polished chrome reflections and subtle neon cybernetic line art, dark moody background with subtle steam, octane render 8k, hyperdetailed skin tone, dramatic side key light',
+        negativePrompt: 'low quality, extra eyes, bad anatomy, cartoon, blurry',
+        category: 'boy',
+        model: 'Midjourney',
+        aspectRatio: '1:1',
+        cfgScale: '8.5',
+        steps: '30',
+        sampler: 'Euler a',
+        seed: '38291048',
+        imageUrl: '/uploads/pixelbyus_chrome_cyber.jpg',
+        creatorName: '@pixelbyus',
+        creatorLink: 'https://x.com/pixelbyus',
+        createdAt: '2026-07-22T14:05:00.000Z'
+      }
+    ];
+
+    for (const p of pixelbyusItems) {
+      await pool.query(`
+        INSERT INTO prompts (
+          id, title, "promptText", "negativePrompt", category, model,
+          "aspectRatio", "cfgScale", steps, sampler, seed, "imageUrl",
+          "creatorName", "creatorLink", status, "createdAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'approved', $15)
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          "promptText" = EXCLUDED."promptText",
+          "imageUrl" = EXCLUDED."imageUrl",
+          "creatorName" = EXCLUDED."creatorName",
+          "creatorLink" = EXCLUDED."creatorLink";
+      `, [
+        p.id, p.title, p.promptText, p.negativePrompt, p.category, p.model,
+        p.aspectRatio, p.cfgScale, p.steps, p.sampler, p.seed, p.imageUrl,
+        p.creatorName, p.creatorLink, p.createdAt
+      ]);
+    }
+
     promptsUpdated = true;
     console.log("Database seeded prompts updated successfully with correct categories and keyword tags.");
   } catch (err) {
@@ -791,7 +1003,7 @@ app.get('/api/prompts', async (req, res) => {
         query += " AND category = 'boy'";
       } else {
         const keyword = `%${search.toLowerCase()}%`;
-        query += " AND (LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + " OR LOWER(\"negativePrompt\") LIKE $" + (params.length + 1) + ")";
+        query += " AND (LOWER(title) LIKE $" + (params.length + 1) + " OR LOWER(\"promptText\") LIKE $" + (params.length + 1) + " OR LOWER(\"negativePrompt\") LIKE $" + (params.length + 1) + " OR LOWER(\"creatorName\") LIKE $" + (params.length + 1) + ")";
         params.push(keyword);
       }
     }

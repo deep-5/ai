@@ -17,7 +17,7 @@ let isGenerating = false;
 
 // Popular Keywords List
 const POPULAR_KEYWORDS = [
-  'Girl', 'Boy', 'Couple', 'Football', 'Cricket', 'Saree', 'Bride', 'Sunset', 
+  '@pixelbyus', 'Girl', 'Boy', 'Couple', 'Football', 'Cricket', 'Saree', 'Bride', 'Sunset', 
   'Anime', 'Car', 'Wedding', 'Nature', 'Portrait', 'Fantasy', 'Horror', 'Gym', 
   'Fashion', 'Food', 'Travel', 'Architecture'
 ];

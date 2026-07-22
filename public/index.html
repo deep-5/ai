@@ -35,9 +35,22 @@
       <!-- Main Feed view -->
       <div id="feed-view-container">
         <!-- AI Prompt Library Hero Header -->
-        <div class="library-hero">
-          <h1 class="library-title">AI Prompt <span class="highlight">Library</span> <button class="btn-submit-prompt" id="btn-open-submit-modal"><i data-lucide="upload" style="width: 14px; height: 14px;"></i> Submit</button></h1>
-          <p class="library-subtitle">Browse our curated collection of AI prompts for Midjourney, DALL-E, Flux & more. Click to copy, save favorites, or generate in Studio.</p>
+        <div class="library-hero" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <h1 class="library-title" style="margin: 0;">AI Prompt <span class="highlight">Library</span></h1>
+            <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+              <a href="https://t.me/+fT10nGL2pVFmNWI9" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.45rem; background: #0088cc; color: #ffffff; padding: 0.5rem 1rem; border-radius: 50px; font-weight: 700; text-decoration: none; font-size: 0.85rem; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+                <i data-lucide="send" style="width: 14px; height: 14px;"></i> Join Telegram
+              </a>
+              <a href="https://x.com/pixelbyus" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.45rem; background: #111111; color: #ffffff; padding: 0.5rem 1rem; border-radius: 50px; font-weight: 700; text-decoration: none; font-size: 0.85rem; transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.2);">
+                <i data-lucide="twitter" style="width: 14px; height: 14px;"></i> @pixelbyus
+              </a>
+              <button class="btn-submit-prompt" id="btn-open-submit-modal">
+                <i data-lucide="upload" style="width: 14px; height: 14px;"></i> Submit
+              </button>
+            </div>
+          </div>
+          <p class="library-subtitle" style="margin: 0;">Browse our curated collection of AI prompts for Midjourney, Flux, DALL-E & @pixelbyus collection. Click to copy, save favorites, or join our community.</p>
         </div>
 
         <!-- Banana control panel layout -->
@@ -145,6 +158,9 @@
         <button class="dock-item" id="dock-btn-favorites" title="Favorites">
           <i data-lucide="heart" style="width: 18px; height: 18px;"></i>
         </button>
+        <a href="https://t.me/+fT10nGL2pVFmNWI9" target="_blank" rel="noopener noreferrer" class="dock-item" title="Join Telegram Group" style="color: #0088cc; display: flex; align-items: center; justify-content: center; text-decoration: none;">
+          <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+        </a>
 
         <div class="dock-separator"></div>
         <button class="dock-item" id="dock-btn-add" title="Submit prompt">
