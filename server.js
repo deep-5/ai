@@ -184,7 +184,7 @@ async function startTelegramScheduler() {
   const https = require('https');
   const sendBatch = async () => {
     try {
-      // Atomic query: claim 5 unposted Girl prompts (strictly MUST contain female terms AND MUST NOT contain male terms)
+      // Atomic query: claim 5 unposted Girl prompts (permanently mark isPostedToTelegram = TRUE to prevent retries)
       let claimResult = await pool.query(`
         UPDATE prompts 
         SET "isPostedToTelegram" = TRUE 
