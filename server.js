@@ -135,6 +135,8 @@ function escapeHtml(text) {
 
 function postToTelegram(p) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  // Only post Girl category prompts to Telegram
+  if (p.category !== 'girl') return;
   const https = require('https');
   try {
     const title = escapeHtml(p.title || 'AI Image Prompt');
